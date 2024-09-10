@@ -74,7 +74,7 @@
   '(( comment definition)
     ( keyword)
     ( number type error)
-    ( function variable)))
+    ( bracket function variable)))
 
 (defvar zig-ts-mode-font-lock-rules nil
   "TODO doc.")
@@ -94,8 +94,8 @@
 (defvar zig-ts-mode-font-lock-rules-variable nil
   "Customize font lock feature `variable'.")
 
-(defvar zig-ts-mode-font-lock-rules-brackets nil
-  "Customize font lock feature `brackets'.")
+(defvar zig-ts-mode-font-lock-rules-bracket nil
+  "Customize font lock feature `bracket'.")
 
 (defvar zig-ts-mode-font-lock-rules-builtin nil
   "Customize font lock feature `builtin'.")
@@ -180,14 +180,14 @@
          (FLOAT) @font-lock-number-face))
 
     :language zig
-    :feature brackets
-    ,(if zig-ts-mode-font-lock-rules-brackets
-         zig-ts-mode-font-lock-rules-brackets
-       '(["[" "]" "(" ")" "{" "}"
-          (Payload "|")
-          (PtrPayload "|")
-          (PtrIndexPayload "|")]
-         @font-lock-bracket-face))
+    :feature bracket
+    ,(if zig-ts-mode-font-lock-rules-bracket
+         zig-ts-mode-font-lock-rules-bracket
+       '(["[" "]" "(" ")" "{" "}"] @font-lock-bracket-face
+         (Payload "|" @font-lock-bracket-face)
+         (PtrPayload "|" @font-lock-bracket-face)
+         (PtrIndexPayload "|" @font-lock-bracket-face)
+         (PtrListPayload "|" @font-lock-bracket-face)))
 
     :language zig
     :feature builtin

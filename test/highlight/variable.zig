@@ -9,10 +9,23 @@ pub fn syscall1(number: usize, arg1: usize) usize {
 }
 
 fn main() !void {
-    // PtrPayload + Payload
+    // PtrPayload
     while (eventuallyErrorSequence()) |value| {
-         sum1 += value;
+    // Payload
     } else |err| {
-         try expect(err == error.ReachedZero);
+    
     }
+
+    // PtrListPayload, SuffixExpr
+    for (items, 0..) |value, i| {
+    }
+
+    const b = switch (a) {
+        // PtrIndex Payload
+        Item.a, Item.e => |item| item,
+    };
+
+    // FieldOrFnCall
+    x.y;
 }
+
