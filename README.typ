@@ -3,6 +3,9 @@
 Official repository is at CodeBerg:
 #link("https://codeberg.org/meow_king/zig-ts-mode")[meow_king/zig-ts-mode].
 
+Target zig tree sitter grammar:
+#link("https://github.com/maxxnino/tree-sitter-zig")[github:maxxnino/tree-sitter-zig]
+
 = Installation
 
 == Elpaca
