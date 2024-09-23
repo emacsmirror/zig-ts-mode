@@ -7,7 +7,7 @@
 ;; Keywords: zig languages tree-sitter
 ;; URL: https://codeberg.org/meow_king/zig-ts-mode
 ;; License: GNU General Public License >= 3
-;; Package-Requires: ((emacs "29.4"))
+;; Package-Requires: ((emacs "29.1"))
 
 ;; This file is NOT part of Emacs.
 ;; This program is free software: you can redistribute it and/or modify
@@ -35,7 +35,7 @@
   :prefix "zig-ts"
   :group 'languages)
 
-(defcustom zig-ts-mode-indent-offset 2
+(defcustom zig-ts-mode-indent-offset 4
   "Indent Zig code by this number of spaces."
   :type 'natnum
   :safe 'natnump
