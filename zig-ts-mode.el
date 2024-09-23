@@ -40,14 +40,22 @@
   :type 'integer
   :group 'zig-ts)
 
+;; copied from grammar.y file instead of grammar.js file from tree-sitter-zig
+;; some keywords are excluded here since they'd better be a constant or
+;; something else like `null'
 (defvar zig-ts-mode--keywords
-  '("addrspace" "align" "allowzero" "and" "anyframe" "anytype" "asm" "async"
-    "await" "break" "callconv" "catch" "comptime" "const" "continue" "defer"
-    "else" "enum" "errdefer" "error" "export" "extern" "fn" "for" "if" "inline"
-    "noalias" "nosuspend" "noinline" "opaque" "or" "orelse" "packed" "pub"
-    "resume" "return" "linksection" "struct" "suspend" "switch" "test"
-    "threadlocal" "try" "union" "unreachable" "usingnamespace" "var" "volatile"
-    "while"))
+  '("asm" "defer" "errdefer" "test" "struct" "union" "enum" "opaque" "error"
+    "async" "await" "suspend" "nosuspend" "resume"
+    "fn"
+    "and" "or" "orelse"
+    "return"
+    "if" "else" "switch"
+    "for" "while" "break" "continue"
+    "usingnamespace"
+    "try" "catch"
+    "const" "var" "volatile" "allowzero" "noalias"
+    "addrspace" "align" "callconv" "linksection"
+    "comptime" "export" "extern" "inline" "noinline" "packed" "pub" "threadlocal"))
 
 (defvar zig-ts-mode-syntax-table
   (let ((st (make-syntax-table)))
@@ -66,11 +74,6 @@
                                    (group (syntax comment-end)))))
 
 (defvar zig-ts-mode-font-lock-feature-list
-  ;; '(( comment definition)
-  ;;   ( keyword string)
-  ;;   ( assignment attribute builtin constant escape-sequence
-  ;;     number type)
-  ;;   ( bracket delimiter error function operator property variable)))
   '(( comment definition)
     ( keyword string)
     ( constant number type error builtin)
@@ -134,25 +137,6 @@
          @font-lock-comment-face))
 
     :language zig
-    :feature definition
-    :override t
-    ,(if zig-ts-mode-font-lock-rules-definition
-         zig-ts-mode-font-lock-rules-definition
-       '(;; function
-         (FnProto function: (IDENTIFIER) @font-lock-function-name-face)
-
-         ;; assume camelCase is a function
-         ([(VarDecl variable_type_function: (IDENTIFIER) @font-lock-function-name-face)
-           (ParamDecl parameter: (IDENTIFIER) @font-lock-function-name-face)]
-          (:match "^[a-z]+\\([A-Z][a-z0-9]*\\)+$" @font-lock-function-name-face))
-
-         ;; variable
-         (VarDecl variable_type_function: (IDENTIFIER)
-                  @font-lock-variable-name-face)
-         (ContainerField (IDENTIFIER) @font-lock-variable-name-face)
-         (ParamDecl parameter: (IDENTIFIER) @font-lock-variable-name-face)))
-
-    :language zig
     :feature string
     ,(if zig-ts-mode-font-lock-rules-string
          zig-ts-mode-font-lock-rules-string
@@ -170,14 +154,99 @@
     :feature keyword
     ,(if zig-ts-mode-font-lock-rules-keyword
          zig-ts-mode-font-lock-rules-keyword
-       `([,@zig-ts-mode--keywords] @font-lock-keyword-face))
+       `([,@zig-ts-mode--keywords] @font-lock-keyword-face
+         
+         (BreakLabel (IDENTIFIER) @font-lock-keyword-face)
+         (BlockLabel (IDENTIFIER) @font-lock-keyword-face)))
+
+    :language zig
+    :feature variable
+    ,(if zig-ts-mode-font-lock-rules-variable
+         zig-ts-mode-font-lock-rules-variable
+       '((AsmOutputItem variable: (IDENTIFIER) @font-lock-variable-use-face)
+         (AsmInputItem variable: (IDENTIFIER) @font-lock-variable-use-face)
+         (Payload variable: (IDENTIFIER) @font-lock-variable-use-face)
+         (PtrPayload variable: (IDENTIFIER) @font-lock-variable-use-face)
+         (PtrIndexPayload variable: (IDENTIFIER) @font-lock-variable-use-face)
+         (PtrListPayload variable: (IDENTIFIER) @font-lock-variable-use-face)
+         
+         (SuffixExpr variable_type_function: (IDENTIFIER)
+                     @font-lock-variable-use-face)
+
+         (FieldOrFnCall field_access: (IDENTIFIER)
+                        @font-lock-variable-use-face)))
+    
+
+    :language zig
+    :feature number
+    ,(if zig-ts-mode-font-lock-rules-number
+         zig-ts-mode-font-lock-rules-number
+       '((INTEGER) @font-lock-number-face
+         (FLOAT) @font-lock-number-face))
+
+    :language zig
+    :feature bracket
+    ,(if zig-ts-mode-font-lock-rules-bracket
+         zig-ts-mode-font-lock-rules-bracket
+       '(["[" "]" "(" ")" "{" "}"] @font-lock-bracket-face
+         
+         (Payload "|" @font-lock-delimiter-face)
+         (PtrPayload "|" @font-lock-delimiter-face)
+         (PtrIndexPayload "|" @font-lock-delimiter-face)
+         (PtrListPayload "|" @font-lock-delimiter-face)))
+    
+    :language zig
+    :feature delimeter
+    ,(if zig-ts-mode-font-lock-rules-delimeter
+         zig-ts-mode-font-lock-rules-delimeter
+       '((FnProto exception: "!" @font-lock-delimiter-face)
+         (ErrorUnionExpr exception: "!" @font-lock-delimiter-face)
+
+         [ ";" "." "," ":" ] @font-lock-delimiter-face))
+
+    :language zig
+    :feature operator
+    ,(if zig-ts-mode-font-lock-rules-operator
+         zig-ts-mode-font-lock-rules-operator
+       '([(CompareOp) (BitwiseOp) (BitShiftOp) (AdditionOp) (AssignOp)
+          (MultiplyOp)
+          (PrefixOp)
+          "*" "**" "=>" ".?" ".*" "?"
+          ".." "..."]
+         @font-lock-operator-face
+         
+         (PtrTypeStart "c" @font-lock-builtin-face)  ; TODO example?
+         ))
+
+
+    :language zig
+    :feature definition
+    :override t
+    ,(if zig-ts-mode-font-lock-rules-definition
+         zig-ts-mode-font-lock-rules-definition
+       '(;; function
+         (FnProto function: (IDENTIFIER) @font-lock-function-name-face)
+
+         ;; variable
+         (VarDecl variable_type_function: (IDENTIFIER)
+                  @font-lock-variable-name-face)
+         (ContainerField (IDENTIFIER) @font-lock-variable-name-face)
+         (ParamDecl parameter: (IDENTIFIER) @font-lock-variable-name-face)
+
+         ;; This rule is not in upstream highlight.scm file
+         (TestDecl (IDENTIFIER) @font-lock-function-name-face)
+
+         ;; assume camelCase is a function
+         ([(VarDecl variable_type_function: (IDENTIFIER) @font-lock-function-name-face)
+           (ParamDecl parameter: (IDENTIFIER) @font-lock-function-name-face)]
+          (:match "^[a-z]+\\([A-Z][a-z0-9]*\\)+$" @font-lock-function-name-face))))
 
     :language zig
     :feature type
     :override t
     ,(if zig-ts-mode-font-lock-rules-type
          zig-ts-mode-font-lock-rules-type
-       '((BuildinTypeExpr) @font-lock-type-face
+       '(["anytype" (BuildinTypeExpr)] @font-lock-type-face
          
          ;; assume TitleCase is a type
          ([(VarDecl variable_type_function: (IDENTIFIER) @font-lock-type-face)
@@ -211,6 +280,7 @@
             "enum"])
           (ContainerField (IDENTIFIER) @font-lock-constant-face))
 
+         ("." field_constant: (IDENTIFIER) @font-lock-constant-face)  ; TODO example
          (ErrorSetDecl field_constant: (IDENTIFIER) @font-lock-constant-face)
          
          ;; assume all CAPS_1 is a constant
@@ -222,78 +292,25 @@
           (:match "^[A-Z][A-Z_0-9]+$" @font-lock-constant-face))))
 
     :language zig
-    :feature variable
-    ,(if zig-ts-mode-font-lock-rules-variable
-         zig-ts-mode-font-lock-rules-variable
-       '((AsmOutputItem variable: (IDENTIFIER) @font-lock-variable-use-face)
-         (AsmInputItem variable: (IDENTIFIER) @font-lock-variable-use-face)
-         (Payload variable: (IDENTIFIER) @font-lock-variable-use-face)
-         (PtrPayload variable: (IDENTIFIER) @font-lock-variable-use-face)
-         (PtrIndexPayload variable: (IDENTIFIER) @font-lock-variable-use-face)
-         (PtrListPayload variable: (IDENTIFIER) @font-lock-variable-use-face)
-         
-         (SuffixExpr variable_type_function: (IDENTIFIER)
-                     @font-lock-variable-use-face)
-
-         (FieldOrFnCall field_access: (IDENTIFIER)
-                        @font-lock-variable-use-face)))
-    
-
-    :language zig
-    :feature number
-    ,(if zig-ts-mode-font-lock-rules-number
-         zig-ts-mode-font-lock-rules-number
-       '((INTEGER) @font-lock-number-face
-         (FLOAT) @font-lock-number-face))
-
-    :language zig
-    :feature bracket
-    ,(if zig-ts-mode-font-lock-rules-bracket
-         zig-ts-mode-font-lock-rules-bracket
-       '(["[" "]" "(" ")" "{" "}"] @font-lock-bracket-face))
-    
-    :language zig
-    :feature delimeter
-    ,(if zig-ts-mode-font-lock-rules-delimeter
-         zig-ts-mode-font-lock-rules-delimeter
-       '((Payload "|" @font-lock-delimiter-face)
-         (PtrPayload "|" @font-lock-delimiter-face)
-         (PtrIndexPayload "|" @font-lock-delimiter-face)
-         (PtrListPayload "|" @font-lock-delimiter-face)
-
-         (FnProto exception: "!" @font-lock-delimiter-face)
-         (ErrorUnionExpr exception: "!" @font-lock-delimiter-face)))
-
-    :language zig
-    :feature operator
-    ,(if zig-ts-mode-font-lock-rules-operator
-         zig-ts-mode-font-lock-rules-operator
-       '((PtrTypeStart "c" @font-lock-builtin-face)  ; TODO example?
-         ))
-
-    :language zig
     :feature builtin
     :override t
     ,(if zig-ts-mode-font-lock-rules-builtin
          zig-ts-mode-font-lock-rules-builtin
-       ;; FIXME
-       '(
-         ;; ["null" "unreachable" "undefined"  ; constant
-         ;;  "anytype" (BuildinTypeExpr)
-         
-         ;;  ]  ; type
-         ;; @font-lock-builtin-face
+       '(["null" "unreachable" "undefined"] @font-lock-builtin-face
 
+         [ "true" "false" ] @font-lock-builtin-face
+         
+         (BUILTINIDENTIFIER) @font-lock-builtin-face
+         
          (((IDENTIFIER) @font-lock-builtin-face)
-          (:equal @font-lock-builtin-face "_"))
-         ))
+          (:equal @font-lock-builtin-face "_"))))
+
 
     :language zig
     :feature error
     ,(if zig-ts-mode-font-lock-rules-error
          zig-ts-mode-font-lock-rules-error
-       '((ERROR) @font-lock-warning-face))
-    ))
+       '((ERROR) @font-lock-warning-face))))
 
 
 ;;;###autoload
