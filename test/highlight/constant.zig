@@ -4,6 +4,8 @@ const Type = enum {
   not_ok,
 };
 
+const allName = 1;
+
 // ErrorSetDecl
 const FileOpenError = error{
   AccessDenied,

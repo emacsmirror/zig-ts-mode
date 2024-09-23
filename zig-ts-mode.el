@@ -35,7 +35,7 @@
   :prefix "zig-ts"
   :group 'languages)
 
-(defcustom zig-ts-mode-indent-offset 4
+(defcustom zig-ts-mode-indent-offset 2
   "Indent Zig code by this number of spaces."
   :type 'natnum
   :safe 'natnump
@@ -247,7 +247,7 @@
          (FnProto function: (IDENTIFIER) @font-lock-function-name-face)
 
          ;; variable
-         (VarDecl variable_type_function: (IDENTIFIER)
+         (VarDecl "var" variable_type_function: (IDENTIFIER)
                   @font-lock-variable-name-face)
          (ContainerField (IDENTIFIER) @font-lock-variable-name-face)
          (ParamDecl parameter: (IDENTIFIER) @font-lock-variable-name-face)
@@ -259,6 +259,30 @@
          ([(VarDecl variable_type_function: (IDENTIFIER) @font-lock-function-name-face)
            (ParamDecl parameter: (IDENTIFIER) @font-lock-function-name-face)]
           (:match "^[a-z]+\\([A-Z][a-z0-9]*\\)+$" @font-lock-function-name-face))))
+
+    :language zig
+    :feature constant
+    :override t
+    ,(if zig-ts-mode-font-lock-rules-constant
+         zig-ts-mode-font-lock-rules-constant
+       '((ContainerDecl
+          (ContainerDeclType
+           [(ErrorUnionExpr)
+            "enum"])
+          (ContainerField (IDENTIFIER) @font-lock-constant-face))
+
+         ("." field_constant: (IDENTIFIER) @font-lock-constant-face)  ; TODO example
+         (ErrorSetDecl field_constant: (IDENTIFIER) @font-lock-constant-face)
+         
+         (VarDecl "const" variable_type_function: (IDENTIFIER)
+                  @font-lock-constant-face)
+         
+         ;; assume all CAPS_1 is a constant
+         ([(SuffixExpr variable_type_function: (IDENTIFIER)
+                       @font-lock-constant-face)
+           (FieldOrFnCall field_access: (IDENTIFIER) @font-lock-constant-face)]
+          (:match "^[A-Z][A-Z_0-9]+$" @font-lock-constant-face))))
+
 
     :language zig
     :feature type
@@ -288,27 +312,6 @@
           (:match "^[a-z]+\\([A-Z][a-z0-9]*\\)+$"
                   @font-lock-function-call-face))))
 
-    :language zig
-    :feature constant
-    :override t
-    ,(if zig-ts-mode-font-lock-rules-constant
-         zig-ts-mode-font-lock-rules-constant
-       '((ContainerDecl
-          (ContainerDeclType
-           [(ErrorUnionExpr)
-            "enum"])
-          (ContainerField (IDENTIFIER) @font-lock-constant-face))
-
-         ("." field_constant: (IDENTIFIER) @font-lock-constant-face)  ; TODO example
-         (ErrorSetDecl field_constant: (IDENTIFIER) @font-lock-constant-face)
-         
-         ;; assume all CAPS_1 is a constant
-         ([(VarDecl variable_type_function: (IDENTIFIER)
-                    @font-lock-constant-face)
-           (SuffixExpr variable_type_function: (IDENTIFIER)
-                       @font-lock-constant-face)
-           (FieldOrFnCall field_access: (IDENTIFIER) @font-lock-constant-face)]
-          (:match "^[A-Z][A-Z_0-9]+$" @font-lock-constant-face))))
 
     :language zig
     :feature builtin
@@ -347,6 +350,84 @@
 ;;;###autoload
 (defvar-keymap zig-ts-mode-map)
 
+(defun zig-ts-mode--imenu-fn-pred-fn (node)
+  "Test whether the given function NODE is validated.
+See `treesit-simple-iemnu-settings'."
+  (if (equal (treesit-node-type node) "FnProto")
+      t
+    ;; VarDecl
+    ;; assume camelCase is a function
+    (let ((case-fold-search nil))
+      (string-match-p
+       "^[a-z]+\\([A-Z][a-z0-9]*\\)+$"
+       (treesit-node-text
+        (treesit-node-child-by-field-name node "variable_type_function"))))))
+
+(defun zig-ts-mode--imenu-fn-name-fn (node)
+  "Return appropriate name for the given function NODE.
+See `treesit-simple-iemnu-settings'."
+  (if (equal (treesit-node-type node) "FnProto")
+      (treesit-node-text
+       (treesit-node-child-by-field-name node "function"))
+    (treesit-node-text
+     (treesit-node-child-by-field-name node "variable_type_function"))))
+
+(defun zig-ts-mode--iemnu-enum-name-fn (node)
+  "Return appropriate name for the given enum NODE.
+See `treesit-simple-iemnu-settings'."
+  (let ((ggggp-node (treesit-node-parent
+                     (treesit-node-parent
+                      (treesit-node-parent
+                       (treesit-node-parent
+                        (treesit-node-parent
+                         node)))))))
+    (when (equal (treesit-node-type ggggp-node) "VarDecl")
+      (treesit-node-text
+       (treesit-node-child-by-field-name ggggp-node
+                                         "variable_type_function")))))
+
+(defun zig-ts-mode--imenu-test-name-fn (node)
+  "Return appropriate name for the given test NODE.
+See `treesit-simple-iemnu-settings'."
+  (treesit-node-text (treesit-node-child node 1)))
+
+(defun zig-ts-mode--iemnu-type-pred-fn (node)
+  "Test whether the given type NODE is validated.
+See `treesit-simple-iemnu-settings'."
+  ;; assume TitleCase is a type
+  (let ((case-fold-search nil))
+    (string-match-p
+     "^[A-Z]\\([a-z]+[A-Za-z_0-9]*\\)*$"
+     (treesit-node-text
+      (treesit-node-child-by-field-name node "variable_type_function")))))
+
+(defun zig-ts-mode--imenu-type-name-fn (node)
+  "Return appropriate name for the given type NODE.
+See `treesit-simple-iemnu-settings'."
+  (treesit-node-text
+   (treesit-node-child-by-field-name node "variable_type_function")))
+
+(defun zig-ts-mode--iemnu-constant-pred-fn (node)
+  "Test whether the given constant NODE is validated.
+See `treesit-simple-iemnu-settings'."
+  ;; assume TitleCase is a type
+  (let ((case-fold-search nil))
+    (and
+     (equal
+      (treesit-node-text (treesit-node-child node 0))
+      "const")
+     ;; assume CAPS_1 is a constant
+     (string-match-p
+      "^[A-Z][A-Z_0-9]+$"
+      (treesit-node-text
+       (treesit-node-child-by-field-name node "variable_type_function"))))))
+
+(defun zig-ts-mode--imenu-constant-name-fn (node)
+  "Return appropriate name for the given constant NODE.
+See `treesit-simple-iemnu-settings'."
+  (treesit-node-text
+   (treesit-node-child-by-field-name node "variable_type_function")))
+
 
 ;;;###autoload
 (define-derived-mode zig-ts-mode prog-mode "Zig-ts"
@@ -375,6 +456,19 @@
 
   ;; Indentation
   (setq-local treesit-simple-indent-rules zig-ts-mode-indent-rules)
+
+  ;; Imenu.
+  ;; NOTE Type and Enum may have collision, also Constant <-> Type <-> Fn
+  (setq-local treesit-simple-imenu-settings
+              `(("Constant" "\\`VarDecl\\'" zig-ts-mode--iemnu-constant-pred-fn
+                 zig-ts-mode--imenu-constant-name-fn)
+                ("Type" "\\`VarDecl\\'" zig-ts-mode--iemnu-type-pred-fn
+                 zig-ts-mode--imenu-type-name-fn)
+                ("Fn" ,(rx bos (or "FnProto" "VarDecl") eos)
+                 zig-ts-mode--imenu-fn-pred-fn zig-ts-mode--imenu-fn-name-fn)
+                ("Enum" "\\`enum\\'" nil zig-ts-mode--iemnu-enum-name-fn)
+                ("Test" "\\`TestDecl\\'" nil zig-ts-mode--imenu-test-name-fn)))
+
 
   (treesit-major-mode-setup))
 

@@ -6,6 +6,7 @@ const Type = struct {
   ok: u8
 };
 
+const ALL_1 = 1;
 
 var x = 1;
 
