@@ -37,7 +37,8 @@
 
 (defcustom zig-ts-mode-indent-offset 4
   "Indent Zig code by this number of spaces."
-  :type 'integer
+  :type 'natnum
+  :safe 'natnump
   :group 'zig-ts)
 
 ;; copied from grammar.y file instead of grammar.js file from tree-sitter-zig
@@ -80,7 +81,7 @@
     ( bracket function variable delimeter operator)))
 
 (defvar zig-ts-mode-font-lock-rules nil
-  "TODO doc.")
+  "Override the whole font lock rules for `zig-ts-mode'.")
 
 (defvar zig-ts-mode-font-lock-rules-error nil
   "Customize font lock feature `error'.")
@@ -335,28 +336,11 @@
      ((parent-is "source_file") column-0 0)
      ((node-is ,(regexp-opt '(")" "]" "}"))) parent-bol 0)
      
-     ;; ((and (parent-is "comment") c-ts-common-looking-at-star)
-     ;;  c-ts-common-comment-start-after-first-star -1)
-     ;; ((parent-is "comment") prev-adaptive-prefix 0)
-     ;; ((parent-is "arguments") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "await_expression") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "array_expression") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "binary_expression") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "block") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "declaration_list") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "enum_variant_list") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "field_declaration_list") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "field_expression") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "field_initializer_list") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "let_declaration") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "macro_definition") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "parameters") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "struct_pattern") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "token_tree") parent-bol rust-ts-mode-indent-offset)
-     ;; ((parent-is "use_list") parent-bol rust-ts-mode-indent-offset)
-     
-     )
-    )
+     ((parent-is "comment") prev-adaptive-prefix 0)
+
+     ((parent-is
+       ,(regexp-opt '("Block" "ContainerDecl" "SwitchExpr" "InitList")))
+      parent-bol zig-ts-mode-indent-offset)))
   "Tree-sitter indent rules for `rust-ts-mode'.")
 
 
