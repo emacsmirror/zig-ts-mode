@@ -76,7 +76,7 @@
 (defvar zig-ts-mode-font-lock-feature-list
   '(( comment definition)
     ( keyword string)
-    ( constant number type error builtin)
+    ( constant number type error builtin assignment)
     ( bracket function variable delimeter operator)))
 
 (defvar zig-ts-mode-font-lock-rules nil
@@ -122,6 +122,9 @@
   "Customize font lock feature `delimeter'.")
 
 (defvar zig-ts-mode-font-lock-rules-operator nil
+  "Customize font lock feature `operator'.")
+
+(defvar zig-ts-mode-font-lock-rules-assignment nil
   "Customize font lock feature `operator'.")
 
 (defun zig-ts-mode-font-lock-rules ()
@@ -218,6 +221,21 @@
          (PtrTypeStart "c" @font-lock-builtin-face)  ; TODO example?
          ))
 
+    :language zig
+    :feature assignment
+    ;; We don't need to add `override' property here since
+    ;; `variable' feature already contains more general rule (but it's at
+    ;; feature level 4)
+    ,(if zig-ts-mode-font-lock-rules-assignment
+         zig-ts-mode-font-lock-rules-assignment
+       '((AssignExpr
+          :anchor
+          (ErrorUnionExpr
+           (SuffixExpr variable_type_function: (IDENTIFIER)
+                       @font-lock-variable-use-face))
+          :anchor
+          (AssignOp))))
+
 
     :language zig
     :feature definition
@@ -312,6 +330,39 @@
          zig-ts-mode-font-lock-rules-error
        '((ERROR) @font-lock-warning-face))))
 
+(defvar zig-ts-mode-indent-rules
+  `((zig ;; TODO
+     ((parent-is "source_file") column-0 0)
+     ((node-is ,(regexp-opt '(")" "]" "}"))) parent-bol 0)
+     
+     ;; ((and (parent-is "comment") c-ts-common-looking-at-star)
+     ;;  c-ts-common-comment-start-after-first-star -1)
+     ;; ((parent-is "comment") prev-adaptive-prefix 0)
+     ;; ((parent-is "arguments") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "await_expression") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "array_expression") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "binary_expression") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "block") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "declaration_list") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "enum_variant_list") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "field_declaration_list") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "field_expression") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "field_initializer_list") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "let_declaration") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "macro_definition") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "parameters") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "struct_pattern") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "token_tree") parent-bol rust-ts-mode-indent-offset)
+     ;; ((parent-is "use_list") parent-bol rust-ts-mode-indent-offset)
+     
+     )
+    )
+  "Tree-sitter indent rules for `rust-ts-mode'.")
+
+
+;;;###autoload
+(defvar-keymap zig-ts-mode-map)
+
 
 ;;;###autoload
 (define-derived-mode zig-ts-mode prog-mode "Zig-ts"
@@ -326,6 +377,10 @@
 
   ;; Comments.
   (zig-ts-mode-comment-setup)
+
+  ;; Electric.
+  (setq-local electric-indent-chars
+              (append "{}();" electric-indent-chars))
   
   ;; Font-lock.
   (setq-local treesit-font-lock-settings
@@ -333,6 +388,9 @@
                                                    zig-ts-mode-font-lock-rules
                                                  (zig-ts-mode-font-lock-rules))))
   (setq-local treesit-font-lock-feature-list zig-ts-mode-font-lock-feature-list)
+
+  ;; Indentation
+  (setq-local treesit-simple-indent-rules zig-ts-mode-indent-rules)
 
   (treesit-major-mode-setup))
 
