@@ -428,6 +428,23 @@ See `treesit-simple-iemnu-settings'."
   (treesit-node-text
    (treesit-node-child-by-field-name node "variable_type_function")))
 
+(defun zig-ts-mode--defun-name (node)
+  (pcase (treesit-node-type node)
+    ("TestDecl"
+     (treesit-node-text
+      (treesit-node-child node 1)))
+    ("Decl"
+     (let ((child (treesit-node-child node 0)))
+       (pcase (treesit-node-type child)
+         ("FnProto"
+          (treesit-node-text
+           (treesit-node-child-by-field-name child "function")))
+         ("VarDecl"
+          (treesit-node-text
+           (treesit-node-child-by-field-name
+            child
+            "variable_type_function"))))))))
+
 
 ;;;###autoload
 (define-derived-mode zig-ts-mode prog-mode "Zig-ts"
@@ -469,6 +486,10 @@ See `treesit-simple-iemnu-settings'."
                 ("Enum" "\\`enum\\'" nil zig-ts-mode--iemnu-enum-name-fn)
                 ("Test" "\\`TestDecl\\'" nil zig-ts-mode--imenu-test-name-fn)))
 
+  ;; Navigation.
+  (setq-local treesit-defun-type-regexp
+              (rx bos (or "Decl" "TestDecl") eos))
+  (setq-local treesit-defun-name-function #'zig-ts-mode--defun-name)
 
   (treesit-major-mode-setup))
 
