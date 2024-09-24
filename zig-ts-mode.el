@@ -53,7 +53,12 @@
     "try" "catch"
     "const" "var" "volatile" "allowzero" "noalias"
     "addrspace" "align" "callconv" "linksection"
-    "comptime" "export" "extern" "inline" "noinline" "packed" "pub" "threadlocal"))
+    "comptime" "export" "extern" "inline" "noinline" "packed" "pub"
+    "threadlocal"))
+
+(defconst zig-ts-mode--container-node-types
+  '("Block" "ContainerDecl" "SwitchExpr" "InitList"
+    "FnCallArguments"))
 
 (defvar zig-ts-mode-syntax-table
   (let ((st (make-syntax-table)))
@@ -255,16 +260,44 @@ to level 3 feature list or set `treesit-font-lock-level' to 4 since
     :feature error
     ((ERROR) @font-lock-warning-face)))
 
+(defun zig-ts-mode--indentation-inside-container-nodes-p (_node parent _bol)
+  "Whether the ancestor node(also itself) of PARENT is of container node type.
+NODE, PARENT and BOL see `treesit-simple-indent-rules'."
+  (treesit-parent-until
+   parent  ; NODE can be nil (hit return), so we use PARENT
+   (concat
+    "\\`"
+    (regexp-opt zig-ts-mode--container-node-types)
+    "\\'")
+   t))
+
+(defun zig-ts-mode--indentation-ancestor-container-nodes-bol (node parent bol)
+  (save-excursion
+    (goto-char
+     (treesit-node-start
+      (zig-ts-mode--indentation-inside-container-nodes-p node parent bol)))
+    (back-to-indentation)
+    (point)))
+
 (defvar zig-ts-mode-indent-rules
   `((zig
+     ;; ((lambda (node parent bol)
+     ;;    (message "%s %s %s %s %s" node parent
+     ;;             (treesit-node-parent parent)
+     ;;             (treesit-node-parent (treesit-node-parent parent)) bol)
+     ;;    nil)
+     ;;  parent-bol 0)
+
      ((parent-is "source_file") column-0 0)
      ((node-is ,(regexp-opt '(")" "]" "}"))) parent-bol 0)
      
      ((parent-is "comment") prev-adaptive-prefix 0)
 
-     ((parent-is
-       ,(regexp-opt '("Block" "ContainerDecl" "SwitchExpr" "InitList")))
-      parent-bol zig-ts-mode-indent-offset)))
+     ;; FnCallArguments often appears as much far away from node as its
+     ;; ancestor, so here we use custom function
+     (zig-ts-mode--indentation-inside-container-nodes-p
+      zig-ts-mode--indentation-ancestor-container-nodes-bol
+      zig-ts-mode-indent-offset)))
   "Tree-sitter indent rules for `zig-ts-mode'.")
 
 
@@ -395,6 +428,7 @@ See `treesit-simple-iemnu-settings'."
 
   ;; Imenu.
   ;; NOTE Type and Enum may have collision, also Constant <-> Type <-> Fn
+  ;; TODO add struct
   (setq-local treesit-simple-imenu-settings
               `(("Constant" "\\`VarDecl\\'" zig-ts-mode--iemnu-constant-pred-fn
                  zig-ts-mode--imenu-constant-name-fn)
