@@ -41,9 +41,6 @@
   :safe 'natnump
   :group 'zig-ts)
 
-;; copied from grammar.y file instead of grammar.js file from tree-sitter-zig
-;; some keywords are excluded here since they'd better be a constant or
-;; something else like `null'
 (defvar zig-ts-mode--keywords
   '("asm" "defer" "errdefer" "test" "struct" "union" "enum" "opaque" "error"
     "async" "await" "suspend" "nosuspend" "resume"
