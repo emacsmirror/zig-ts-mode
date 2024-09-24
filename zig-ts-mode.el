@@ -57,8 +57,24 @@
     "threadlocal"))
 
 (defconst zig-ts-mode--container-node-types
-  '("Block" "ContainerDecl" "SwitchExpr" "InitList"
+  '(;; paren
+    "GroupedExpr" "SwitchExpr" "AsmExpr" "AsmOutputItem" "AsmInputItem"
+    "WhileContinueExpr" "LinkSection" "AddrSpace" "CallConv" "IfPrefix"
+    "WhilePrefix" "ForPrefix" "PrefixTypeOp" "FnCallArguments"
+    "ContainerDeclType" "ByteAlign" "ParamDeclList"
+
+    ;; brace
+    "Block" "InitList" "ErrorSetDecl" "ContainerDecl"
+    ;; "SwitchExpr"
+
+    ;; bracket
+    "SuffixOp" "SliceTypeStart" "PtrTypeStart" "ArrayTypeStart"
+    ;; AsmOutputItem AsmInputItem
+    
     "FnCallArguments"))
+
+(defconst zig-ts-mode--container-node-types-regexp
+  (regexp-opt zig-ts-mode--container-node-types))
 
 (defvar zig-ts-mode-syntax-table
   (let ((st (make-syntax-table)))
@@ -267,11 +283,13 @@ NODE, PARENT and BOL see `treesit-simple-indent-rules'."
    parent  ; NODE can be nil (hit return), so we use PARENT
    (concat
     "\\`"
-    (regexp-opt zig-ts-mode--container-node-types)
+    zig-ts-mode--container-node-types-regexp
     "\\'")
    t))
 
 (defun zig-ts-mode--indentation-ancestor-container-nodes-bol (node parent bol)
+  "Return the beginning of line position of the closest ancestor container node.
+NODE, PARENT and BOL see `treesit-simple-indent-rules'."
   (save-excursion
     (goto-char
      (treesit-node-start
@@ -279,10 +297,45 @@ NODE, PARENT and BOL see `treesit-simple-indent-rules'."
     (back-to-indentation)
     (point)))
 
+(defun zig-ts-mode--indentation-prev-line-is-closed-FieldOrFnCall-p
+    (_node _parent _bol)
+  "Whether the previous line is FieldOrFnCall node.
+NODE, PARENT and BOL see `treesit-simple-indent-rules'."
+  (save-excursion
+    (forward-line -1)
+    (back-to-indentation)
+    (let* ((node (treesit-node-at (point)))
+           (node-type (treesit-node-type node))
+           (parent (treesit-node-parent node))
+           (parent-type (treesit-node-type parent)))
+      (or
+       ;; assume user don't write too loose syntax like
+       ;; Foo
+       ;;   .
+       ;;   FnCall()
+       
+       ;; multi-line
+       (and
+        (equal node-type ")")
+        (equal parent-type "FnCallArguments")
+        (equal
+         (treesit-node-type (treesit-node-parent parent))
+         "FieldOrFnCall"))
+       ;; one line
+       (and
+        (equal node-type ".")
+        (equal parent-type "FieldOrFnCall")
+        ;; If it is an FnCall, then check whether it ends at this line
+        (when (> (treesit-node-child-count parent) 2)
+          (save-excursion
+            (end-of-visible-line)
+            (equal (char-before (point)) ?\)))))))))
+
 (defvar zig-ts-mode-indent-rules
   `((zig
      ;; ((lambda (node parent bol)
-     ;;    (message "%s %s %s %s %s" node parent
+     ;;    (message "%s: %s %s %s %s %s"
+     ;;             (point) node parent
      ;;             (treesit-node-parent parent)
      ;;             (treesit-node-parent (treesit-node-parent parent)) bol)
      ;;    nil)
@@ -292,6 +345,10 @@ NODE, PARENT and BOL see `treesit-simple-indent-rules'."
      ((node-is ,(regexp-opt '(")" "]" "}"))) parent-bol 0)
      
      ((parent-is "comment") prev-adaptive-prefix 0)
+
+     ((node-is "FieldOrFnCall") parent-bol zig-ts-mode-indent-offset)
+     ((and no-node zig-ts-mode--indentation-prev-line-is-closed-FieldOrFnCall-p)
+      prev-line 0)
 
      ;; FnCallArguments often appears as much far away from node as its
      ;; ancestor, so here we use custom function
