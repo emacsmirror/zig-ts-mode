@@ -9,10 +9,17 @@ fn main() !void {
             .get(&bytes,
                 0, 3
             )
-        // hello
-        //
+            // hello
             .hi
+            // hello
+            .hi
+            // hello
     );
+
+    foo
+        .hi
+        .what;
+    // hello
 
     errdefer asm volatile (""
         : [_] "=r,m" (k)

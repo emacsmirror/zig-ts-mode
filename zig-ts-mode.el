@@ -300,36 +300,62 @@ NODE, PARENT and BOL see `treesit-simple-indent-rules'."
 (defun zig-ts-mode--indentation-prev-line-is-closed-FieldOrFnCall-p
     (_node _parent _bol)
   "Whether the previous line is FieldOrFnCall node.
+Ignore comments.
 NODE, PARENT and BOL see `treesit-simple-indent-rules'."
   (save-excursion
     (forward-line -1)
-    (back-to-indentation)
-    (let* ((node (treesit-node-at (point)))
-           (node-type (treesit-node-type node))
-           (parent (treesit-node-parent node))
-           (parent-type (treesit-node-type parent)))
-      (or
-       ;; assume user don't write too loose syntax like
-       ;; Foo
-       ;;   .
-       ;;   FnCall()
-       
-       ;; multi-line
-       (and
-        (equal node-type ")")
-        (equal parent-type "FnCallArguments")
-        (equal
-         (treesit-node-type (treesit-node-parent parent))
-         "FieldOrFnCall"))
-       ;; one line
-       (and
-        (equal node-type ".")
-        (equal parent-type "FieldOrFnCall")
-        ;; If it is an FnCall, then check whether it ends at this line
-        (when (> (treesit-node-child-count parent) 2)
-          (save-excursion
+    (while (string-match-p
+            "comment"  ; all comment node types
+            (treesit-node-type (treesit-node-at (point))))
+      (forward-line -1))
+    (when (progn
             (end-of-visible-line)
-            (equal (char-before (point)) ?\)))))))))
+            (not (equal (char-before (point)) ?\;)))
+      (back-to-indentation)
+      (let* ((node (treesit-node-at (point)))
+             (node-type (treesit-node-type node))
+             (parent (treesit-node-parent node))
+             (parent-type (treesit-node-type parent)))
+        (or
+         ;; assume user don't write too loose syntax like
+         ;; Foo
+         ;;   .
+         ;;   FnCall()
+         
+         ;; multi-line
+         (and
+          (equal node-type ")")
+          (equal parent-type "FnCallArguments")
+          (equal
+           (treesit-node-type (treesit-node-parent parent))
+           "FieldOrFnCall"))
+         ;; one line
+         (and
+          (equal node-type ".")
+          (equal parent-type "FieldOrFnCall")
+          (if (<= (treesit-node-child-count parent) 2)
+              t
+            ;; If it is an FnCall, then check whether it ends at this line
+            (end-of-visible-line)
+            (equal (char-before (point)) ?\))))))
+      )))
+
+(defun zig-ts-mode--indentation-prev-non-comment-line-bol
+    (_node _parent _bol)
+  "Return the beginning of line position of the previous non-comment-line.
+NODE, PARENT and BOL see `treesit-simple-indent-rules'."
+  (save-excursion
+    (forward-line -1)
+    (while (string-match-p
+            "comment"  ; all comment node types
+            (treesit-node-type (treesit-node-at (point))))
+      (forward-line -1))
+    (back-to-indentation)
+    (point)))
+
+
+(defconst zig-ts-mode--indentation-dot-or-comment-node-type-regexp
+  (rx (or (seq bos "." eos) (seq "comment" eos))))
 
 (defvar zig-ts-mode-indent-rules
   `((zig
@@ -347,8 +373,11 @@ NODE, PARENT and BOL see `treesit-simple-indent-rules'."
      ((parent-is "comment") prev-adaptive-prefix 0)
 
      ((node-is "FieldOrFnCall") parent-bol zig-ts-mode-indent-offset)
-     ((and no-node zig-ts-mode--indentation-prev-line-is-closed-FieldOrFnCall-p)
-      prev-line 0)
+     ((and (or no-node
+               (node-is
+                ,zig-ts-mode--indentation-dot-or-comment-node-type-regexp))
+           zig-ts-mode--indentation-prev-line-is-closed-FieldOrFnCall-p)
+      zig-ts-mode--indentation-prev-non-comment-line-bol 0)
 
      ;; FnCallArguments often appears as much far away from node as its
      ;; ancestor, so here we use custom function
@@ -473,7 +502,7 @@ See `treesit-simple-iemnu-settings'."
 
   ;; Electric.
   (setq-local electric-indent-chars
-              (append "{}();" electric-indent-chars))
+              (append "{}().,;" electric-indent-chars))
   
   ;; Font-lock.
   (setq-local treesit-font-lock-settings
