@@ -22,4 +22,12 @@ Target zig tree sitter grammar:
   :ensure '(:type git :host codeberg :repo "meow_king/zig-ts-mode"))
 ```
 
+= Configuration
+
+Automatically enter `zig-ts-mode`:
+
+```lisp
+(add-to-list 'auto-mode-alist '("\\.zig\\'" . zig-ts-mode))
+```
+
 
