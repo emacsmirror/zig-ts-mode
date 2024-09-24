@@ -83,9 +83,6 @@ has noticeable performance cost.  You can either manually add this feature
 to level 3 feature list or set `treesit-font-lock-level' to 4 since
 `variable' feature is a super set of `assignment' feature.")
 
-(defvar zig-ts-mode-font-lock-rules nil
-  "Override the whole font lock rules for `zig-ts-mode'.")
-
 (defvar zig-ts-mode-font-lock-rules
   `(;; Zig Tree Sitter Font Lock
     :language zig
