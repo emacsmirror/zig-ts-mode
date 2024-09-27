@@ -211,21 +211,13 @@
       (:match "^[a-z]+\\([A-Z][a-z0-9]*\\)+$" @font-lock-function-name-face)))
 
    :language 'zig
-   :feature 'constant
+   :feature 'constant  ; part 1
    :override t
    '((ContainerDecl
       (ContainerDeclType
        [(ErrorUnionExpr)
         "enum"])
       (ContainerField (IDENTIFIER) @font-lock-constant-face))
-
-     (ContainerDecl
-      (ContainerDeclType
-       [(ErrorUnionExpr)
-        "enum"])
-      (ContainerField
-       (ErrorUnionExpr
-        (SuffixExpr (IDENTIFIER) @font-lock-constant-face))))
 
      ("." field_constant: (IDENTIFIER) @font-lock-constant-face)  ; TODO example
      (ErrorSetDecl field_constant: (IDENTIFIER) @font-lock-constant-face)
@@ -263,6 +255,17 @@
        (FieldOrFnCall field_access: (IDENTIFIER) @font-lock-function-call-face)]
       (:match "^[a-z]+\\([A-Z][a-z0-9]*\\)+$"
               @font-lock-function-call-face)))
+
+   :language 'zig
+   :feature 'constant  ; part 2
+   :override t
+   '((ContainerDecl
+      (ContainerDeclType
+       [(ErrorUnionExpr)
+        "enum"])
+      (ContainerField
+       (ErrorUnionExpr
+        (SuffixExpr (IDENTIFIER) @font-lock-constant-face)))))
 
    :language 'zig
    :feature 'builtin
