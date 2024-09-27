@@ -14,7 +14,6 @@ const FileOpenError = error{
 };
 
 
-
 fn main() {
    const CAPS = 1;
 }

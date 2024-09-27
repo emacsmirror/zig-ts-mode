@@ -95,27 +95,23 @@
 (defvar zig-ts-mode-font-lock-feature-list
   '(( comment definition)
     ( keyword string)
-    ( constant number type error builtin)
+    ( constant number type error builtin assignment)
     ( bracket function variable delimeter operator))
-  "Font lock feature list for `zig-ts-mode'.
-
-NOTE `assignment' feature is excluded in level 3 feature list since it
-has noticeable performance cost.  You can either manually add this feature
-to level 3 feature list or set `treesit-font-lock-level' to 4 since
-`variable' feature is a super set of `assignment' feature.")
+  "Font lock feature list for `zig-ts-mode'.")
 
 (defvar zig-ts-mode-font-lock-rules
-  `(;; Zig Tree Sitter Font Lock
-    :language zig
-    :feature comment
-    ([(container_doc_comment)
+  (treesit-font-lock-rules
+   ;; Zig Tree Sitter Font Lock
+   :language 'zig
+   :feature 'comment
+   '([(container_doc_comment)
       (doc_comment)
       (line_comment)]
      @font-lock-comment-face)
 
-    :language zig
-    :feature string
-    ([;; common
+   :language 'zig
+   :feature 'string
+   '([;; common
       (LINESTRING)
       (STRINGLITERALSINGLE)
 
@@ -125,16 +121,16 @@ to level 3 feature list or set `treesit-font-lock-level' to 4 since
       (FormatSequence)]
      @font-lock-string-face)
 
-    :language zig
-    :feature keyword
-    ([,@zig-ts-mode--keywords] @font-lock-keyword-face
+   :language 'zig
+   :feature 'keyword
+   `([,@zig-ts-mode--keywords] @font-lock-keyword-face
      
      (BreakLabel (IDENTIFIER) @font-lock-keyword-face)
      (BlockLabel (IDENTIFIER) @font-lock-keyword-face))
 
-    :language zig
-    :feature variable
-    ((AsmOutputItem variable: (IDENTIFIER) @font-lock-variable-use-face)
+   :language 'zig
+   :feature 'variable
+   '((AsmOutputItem variable: (IDENTIFIER) @font-lock-variable-use-face)
      (AsmInputItem variable: (IDENTIFIER) @font-lock-variable-use-face)
      (Payload variable: (IDENTIFIER) @font-lock-variable-use-face)
      (PtrPayload variable: (IDENTIFIER) @font-lock-variable-use-face)
@@ -146,32 +142,32 @@ to level 3 feature list or set `treesit-font-lock-level' to 4 since
 
      (FieldOrFnCall field_access: (IDENTIFIER)
                     @font-lock-variable-use-face))
-    
+   
 
-    :language zig
-    :feature number
-    ((INTEGER) @font-lock-number-face
+   :language 'zig
+   :feature 'number
+   '((INTEGER) @font-lock-number-face
      (FLOAT) @font-lock-number-face)
 
-    :language zig
-    :feature bracket
-    (["[" "]" "(" ")" "{" "}"] @font-lock-bracket-face
+   :language 'zig
+   :feature 'bracket
+   '(["[" "]" "(" ")" "{" "}"] @font-lock-bracket-face
      
      (Payload "|" @font-lock-delimiter-face)
      (PtrPayload "|" @font-lock-delimiter-face)
      (PtrIndexPayload "|" @font-lock-delimiter-face)
      (PtrListPayload "|" @font-lock-delimiter-face))
-    
-    :language zig
-    :feature delimeter
-    ((FnProto exception: "!" @font-lock-delimiter-face)
+   
+   :language 'zig
+   :feature 'delimeter
+   '((FnProto exception: "!" @font-lock-delimiter-face)
      (ErrorUnionExpr exception: "!" @font-lock-delimiter-face)
 
      [ ";" "." "," ":" ] @font-lock-delimiter-face)
 
-    :language zig
-    :feature operator
-    ([(CompareOp) (BitwiseOp) (BitShiftOp) (AdditionOp) (AssignOp)
+   :language 'zig
+   :feature 'operator
+   '([(CompareOp) (BitwiseOp) (BitShiftOp) (AdditionOp) (AssignOp)
       (MultiplyOp)
       (PrefixOp)
       "*" "**" "=>" ".?" ".*" "?"
@@ -181,12 +177,12 @@ to level 3 feature list or set `treesit-font-lock-level' to 4 since
      (PtrTypeStart "c" @font-lock-builtin-face)  ; TODO example?
      )
 
-    :language zig
-    :feature assignment
-    ;; We don't need to add `override' property here since
-    ;; `variable' feature already contains more general rule (but it's at
-    ;; feature level 4)
-    ((AssignExpr
+   :language 'zig
+   :feature 'assignment
+   ;; We don't need to add `override' property here since
+   ;; `variable' feature already contains more general rule (but it's at
+   ;; feature level 4)
+   '((AssignExpr
       :anchor
       (ErrorUnionExpr
        (SuffixExpr variable_type_function: (IDENTIFIER)
@@ -194,10 +190,10 @@ to level 3 feature list or set `treesit-font-lock-level' to 4 since
       :anchor
       (AssignOp)))
 
-    :language zig
-    :feature definition
-    :override t
-    (;; function
+   :language 'zig
+   :feature 'definition
+   :override t
+   '(;; function
      (FnProto function: (IDENTIFIER) @font-lock-function-name-face)
 
      ;; variable
@@ -214,14 +210,22 @@ to level 3 feature list or set `treesit-font-lock-level' to 4 since
        (ParamDecl parameter: (IDENTIFIER) @font-lock-function-name-face)]
       (:match "^[a-z]+\\([A-Z][a-z0-9]*\\)+$" @font-lock-function-name-face)))
 
-    :language zig
-    :feature constant
-    :override t
-    ((ContainerDecl
+   :language 'zig
+   :feature 'constant
+   :override t
+   '((ContainerDecl
       (ContainerDeclType
        [(ErrorUnionExpr)
         "enum"])
       (ContainerField (IDENTIFIER) @font-lock-constant-face))
+
+     (ContainerDecl
+      (ContainerDeclType
+       [(ErrorUnionExpr)
+        "enum"])
+      (ContainerField
+       (ErrorUnionExpr
+        (SuffixExpr (IDENTIFIER) @font-lock-constant-face))))
 
      ("." field_constant: (IDENTIFIER) @font-lock-constant-face)  ; TODO example
      (ErrorSetDecl field_constant: (IDENTIFIER) @font-lock-constant-face)
@@ -236,10 +240,10 @@ to level 3 feature list or set `treesit-font-lock-level' to 4 since
       (:match "^[A-Z][A-Z_0-9]+$" @font-lock-constant-face)))
 
 
-    :language zig
-    :feature type
-    :override t
-    (["anytype" (BuildinTypeExpr)] @font-lock-type-face
+   :language 'zig
+   :feature 'type
+   :override t
+   '(["anytype" (BuildinTypeExpr)] @font-lock-type-face
      
      ;; assume TitleCase is a type
      ([(VarDecl variable_type_function: (IDENTIFIER) @font-lock-type-face)
@@ -247,11 +251,11 @@ to level 3 feature list or set `treesit-font-lock-level' to 4 since
        (ParamDecl parameter: (IDENTIFIER) @font-lock-type-face)
        (FieldOrFnCall field_access: (IDENTIFIER) @font-lock-type-face)]
       (:match "^[A-Z]\\([a-z]+[A-Za-z_0-9]*\\)*$" @font-lock-type-face)))
-    
-    :language zig
-    :feature function
-    :override t
-    ((FieldOrFnCall function_call: (IDENTIFIER)
+   
+   :language 'zig
+   :feature 'function
+   :override t
+   '((FieldOrFnCall function_call: (IDENTIFIER)
                     @font-lock-function-call-face)
      
      ;; assume camelCase is a function
@@ -260,10 +264,10 @@ to level 3 feature list or set `treesit-font-lock-level' to 4 since
       (:match "^[a-z]+\\([A-Z][a-z0-9]*\\)+$"
               @font-lock-function-call-face)))
 
-    :language zig
-    :feature builtin
-    :override t
-    (["null" "unreachable" "undefined"] @font-lock-builtin-face
+   :language 'zig
+   :feature 'builtin
+   :override t
+   '(["null" "unreachable" "undefined"] @font-lock-builtin-face
 
      [ "true" "false" ] @font-lock-builtin-face
      
@@ -272,9 +276,9 @@ to level 3 feature list or set `treesit-font-lock-level' to 4 since
      (((IDENTIFIER) @font-lock-builtin-face)
       (:equal @font-lock-builtin-face "_")))
 
-    :language zig
-    :feature error
-    ((ERROR) @font-lock-warning-face)))
+   :language 'zig
+   :feature 'error
+   '((ERROR) @font-lock-warning-face)))
 
 (defun zig-ts-mode--indentation-inside-container-nodes-p (_node parent _bol)
   "Whether the ancestor node(also itself) of PARENT is of container node type.
@@ -505,8 +509,7 @@ See `treesit-simple-iemnu-settings'."
               (append "{}().,;" electric-indent-chars))
   
   ;; Font-lock.
-  (setq-local treesit-font-lock-settings
-              (apply #'treesit-font-lock-rules zig-ts-mode-font-lock-rules))
+  (setq-local treesit-font-lock-settings zig-ts-mode-font-lock-rules)
   (setq-local treesit-font-lock-feature-list zig-ts-mode-font-lock-feature-list)
 
   ;; Indentation
