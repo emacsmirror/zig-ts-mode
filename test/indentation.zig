@@ -32,6 +32,18 @@ fn main() !void {
     while (i < 10) {
         i += 1;
     }
+
+    const x = if (res.args.help != 0)
+        debug.print("--help\n", .{})
+    else
+        hello;
+
+    const y = outer: for (items) |value|
+        // Break and continue are supported.
+        break :outer value;
+
+    while (true) 
+        break;
 }
 
 test "PackedIntIo" {

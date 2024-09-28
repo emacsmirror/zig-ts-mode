@@ -366,13 +366,13 @@ NODE, PARENT and BOL see `treesit-simple-indent-rules'."
 
 (defvar zig-ts-mode-indent-rules
   `((zig
-     ;; ((lambda (node parent bol)
-     ;;    (message "%s: %s %s %s %s %s"
-     ;;             (point) node parent
-     ;;             (treesit-node-parent parent)
-     ;;             (treesit-node-parent (treesit-node-parent parent)) bol)
-     ;;    nil)
-     ;;  parent-bol 0)
+     ((lambda (node parent bol)
+        (message "%s: %s %s %s %s %s"
+                 (point) node parent
+                 (treesit-node-parent parent)
+                 (treesit-node-parent (treesit-node-parent parent)) bol)
+        nil)
+      parent-bol 0)
 
      ((parent-is "source_file") column-0 0)
      ((node-is ,(regexp-opt '(")" "]" "}"))) parent-bol 0)
@@ -385,6 +385,16 @@ NODE, PARENT and BOL see `treesit-simple-indent-rules'."
                 ,zig-ts-mode--indentation-dot-or-comment-node-type-regexp))
            zig-ts-mode--indentation-prev-line-is-closed-FieldOrFnCall-p)
       zig-ts-mode--indentation-prev-non-comment-line-bol 0)
+     
+     ((node-is "else") parent-bol 0)
+     ((parent-is ,(rx bos (or "IfStatement" "IfExpr") eos))
+      standalone-parent zig-ts-mode-indent-offset)
+
+     ((parent-is ,(rx bos (or "ForStatement" "ForExpr") eos))
+      standalone-parent zig-ts-mode-indent-offset)
+
+     ((parent-is ,(rx bos (or "WhileStatement" "WhileExpr") eos))
+      standalone-parent zig-ts-mode-indent-offset)
 
      ;; FnCallArguments often appears as much far away from node as its
      ;; ancestor, so here we use custom function
