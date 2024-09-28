@@ -49,7 +49,17 @@ fn main() !void {
         \\ El Psy Congroo
         \\ El Psy Congroo
     ;
+
 }
+
+pub const descriptions = .{
+    .hello =
+        1,
+    .output =
+        \\ hello
+        \\ what
+    ,
+};
 
 test "PackedIntIo" {
     const bytes = [_]u8{

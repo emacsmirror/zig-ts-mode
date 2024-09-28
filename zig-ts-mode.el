@@ -364,13 +364,20 @@ NODE, PARENT and BOL see `treesit-simple-indent-rules'."
 (defconst zig-ts-mode--indentation-dot-or-comment-node-type-regexp
   (rx (or (seq bos "." eos) (seq "comment" eos))))
 
-(defun zig-ts-mode--indentation-parent-until-VarDecl-bol (_node parent _bol)
-  "Find the beginning of line position of the VarDecl ancestor node.
+(defconst zig-ts-mode--indentation-assignment-node-type-regexp
+  (rx bos (or "VarDecl" "FieldInit") eos))
+
+(defun zig-ts-mode--indentation-parent-until-assignment-node-bol
+    (_node parent _bol)
+  "Find the beginning of line position of the specific assignment ancestor node.
 NODE, PARENT and BOL see `treesit-simple-indent-rules'."
   (save-excursion
     (goto-char
      (treesit-node-start
-      (treesit-parent-until parent "\\`VarDecl\\'" t)))
+      (treesit-parent-until
+       parent
+       zig-ts-mode--indentation-assignment-node-type-regexp
+       t)))
     (back-to-indentation)
     (point)))
 
@@ -414,18 +421,18 @@ NODE, PARENT and BOL see `treesit-simple-indent-rules'."
 
      
      ;; Multi-line String
-     ;; We use `zig-ts-mode--indentation-parent-until-VarDecl-bol' instead of
-     ;; `standalone-parent' or `great-grand-parent' here considering the
-     ;; following example:
+     ;; We use `zig-ts-mode--indentation-parent-until-assignment-node-bol'
+     ;; instead of `standalone-parent' or `great-grand-parent' here considering
+     ;; the following example:
      ;; pub const description =
      ;;    \\ el
      ;;    \\ psy
      ;; ;
-     ((parent-is "\\`VarDecl\\'")
-      zig-ts-mode--indentation-parent-until-VarDecl-bol
-      zig-ts-mode-indent-offset)
+     ((parent-is ,zig-ts-mode--indentation-assignment-node-type-regexp)
+      zig-ts-mode--indentation-parent-until-assignment-node-bol
+      zig-ts-mode-indent-offset)  ; this rules also works for others
      ((node-is "\\`LINESTRING\\'")
-      zig-ts-mode--indentation-parent-until-VarDecl-bol
+      zig-ts-mode--indentation-parent-until-assignment-node-bol
       zig-ts-mode-indent-offset)
 
      ;; FnCallArguments often appears as much far away from node as its
