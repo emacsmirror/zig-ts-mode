@@ -44,6 +44,11 @@ fn main() !void {
 
     while (true) 
         break;
+
+    const str =
+        \\ El Psy Congroo
+        \\ El Psy Congroo
+    ;
 }
 
 test "PackedIntIo" {

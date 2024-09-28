@@ -99,7 +99,7 @@
     ( bracket function variable delimeter operator))
   "Font lock feature list for `zig-ts-mode'.")
 
-(defvar zig-ts-mode-font-lock-rules
+(defvar zig-ts-mode-font-lock-settings
   (treesit-font-lock-rules
    ;; Zig Tree Sitter Font Lock
    :language 'zig
@@ -379,6 +379,12 @@ NODE, PARENT and BOL see `treesit-simple-indent-rules'."
      
      ((parent-is "comment") prev-adaptive-prefix 0)
 
+     ;; Example
+     ;; const str =
+     ;;     \\ hello
+     ;; ;
+     ((node-is "\\`;\\'") parent-bol 0)
+
      ((node-is "FieldOrFnCall") parent-bol zig-ts-mode-indent-offset)
      ((and (or no-node
                (node-is
@@ -395,6 +401,11 @@ NODE, PARENT and BOL see `treesit-simple-indent-rules'."
 
      ((parent-is ,(rx bos (or "WhileStatement" "WhileExpr") eos))
       standalone-parent zig-ts-mode-indent-offset)
+
+     
+     ;; Multi-line String
+     ((parent-is "\\`VarDecl\\'") standalone-parent zig-ts-mode-indent-offset)
+     ((node-is "\\`LINESTRING\\'") great-grand-parent zig-ts-mode-indent-offset)
 
      ;; FnCallArguments often appears as much far away from node as its
      ;; ancestor, so here we use custom function
@@ -522,7 +533,7 @@ See `treesit-simple-iemnu-settings'."
               (append "{}().,;" electric-indent-chars))
   
   ;; Font-lock.
-  (setq-local treesit-font-lock-settings zig-ts-mode-font-lock-rules)
+  (setq-local treesit-font-lock-settings zig-ts-mode-font-lock-settings)
   (setq-local treesit-font-lock-feature-list zig-ts-mode-font-lock-feature-list)
 
   ;; Indentation
