@@ -81,6 +81,21 @@
     ;; comment
     (modify-syntax-entry  ?/     ". 12"  st)
     (modify-syntax-entry  ?\n    "> "     st)
+    
+    (modify-syntax-entry ?+   "."      st)
+    (modify-syntax-entry ?-   "."      st)
+    (modify-syntax-entry ?=   "."      st)
+    (modify-syntax-entry ?*   "."      st)
+    (modify-syntax-entry ?.   "."      st)
+    (modify-syntax-entry ?%   "."      st)
+    (modify-syntax-entry ?&   "."      st)
+    (modify-syntax-entry ?|   "."      st)
+    (modify-syntax-entry ?^   "."      st)
+    (modify-syntax-entry ?!   "."      st)
+    (modify-syntax-entry ?@   "."      st)
+    (modify-syntax-entry ?~   "."      st)
+    (modify-syntax-entry ?<   "."      st)
+    (modify-syntax-entry ?>   "."      st)
     st))
 
 (defun zig-ts-mode-comment-setup()
