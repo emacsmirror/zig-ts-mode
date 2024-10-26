@@ -301,14 +301,14 @@
 (defun zig-ts-mode--indentation-inside-container-nodes-p (_node parent _bol)
   "Whether the ancestor node(also itself) of PARENT is of container node type.
 NODE, PARENT and BOL see `treesit-simple-indent-rules'."
-    (treesit-parent-until
-     ;; NODE can be nil (hit return), so we use PARENT
-     parent (lambda (node)
-              (let ((node-str (treesit-node-next node)))
-                (string-match-p
-                 (concat "\\`" zig-ts-mode--container-node-types-regexp "\\'")
-                 node-str)))
-     t))
+  (treesit-parent-until
+   ;; NODE can be nil (hit return), so we use PARENT
+   parent
+   (lambda (node)
+     (string-match-p
+      (concat "\\`" zig-ts-mode--container-node-types-regexp "\\'")
+      (treesit-node-type node)))
+   t))
 
 (defun zig-ts-mode--indentation-ancestor-container-nodes-bol (node parent bol)
   "Return the beginning of line position of the closest ancestor container node.
