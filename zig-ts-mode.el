@@ -603,7 +603,7 @@ See `treesit-simple-iemnu-settings'."
 
   (treesit-major-mode-setup))
 
-(add-to-list 'auto-mode-alist '("\\.zig\\'" . zig-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.zig\\(?:\\.zon\\)?\\'" . zig-ts-mode))
 
 (provide 'zig-ts-mode)
 
