@@ -601,7 +601,10 @@ See `treesit-simple-iemnu-settings'."
               (rx bos (or "Decl" "TestDecl") eos))
   (setq-local treesit-defun-name-function #'zig-ts-mode--defun-name)
 
-  (treesit-major-mode-setup))
+  (treesit-major-mode-setup)
+
+  (when (functionp 'derived-mode-add-parents)
+    (derived-mode-add-parents 'zig-ts-mode '(zig-mode))))
 
 (add-to-list 'auto-mode-alist '("\\.zig\\(?:\\.zon\\)?\\'" . zig-ts-mode))
 
