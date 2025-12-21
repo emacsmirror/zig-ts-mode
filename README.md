@@ -4,7 +4,23 @@ Official repository is at CodeBerg:
 [meow_king/zig-ts-mode](https://codeberg.org/meow_king/zig-ts-mode).
 
 Target zig tree sitter grammar:
-[github:maxxnino/tree-sitter-zig](https://github.com/maxxnino/tree-sitter-zig)
+[github:tree-sitter-grammars/tree-sitter-zig](https://github.com/tree-sitter-grammars/tree-sitter-zig) (commit: 6479aa13f32f701c383083d8b28360ebd682fb7d)
+
+Example configuration to manage Zig tree sitter garmmar:
+
+```
+(setq treesit-language-source-alist
+      '((zig "https://github.com/tree-sitter-grammars/tree-sitter-zig")))
+```
+
+(Note, `M-x treesit-install-language-grammar` to install the Zig tree sitter grammar)
+
+
+Tested on Emacs 30 and master branch.
+
+---
+
+I currently don't write Zig. If you'd like to help maintain or take over this project, please contact me. Thank you!
 
 # Installation
 
@@ -27,5 +43,5 @@ Target zig tree sitter grammar:
 Automatically enter `zig-ts-mode`:
 
 ``` lisp
-(add-to-list 'auto-mode-alist '("\\.zig\\'" . zig-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.zig\\(?:\\.zon\\)?\\'" . zig-ts-mode))
 ```
