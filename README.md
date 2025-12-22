@@ -20,7 +20,7 @@ Tested on Emacs 30 and master branch.
 
 ---
 
-I currently don't write Zig. If you'd like to help maintain or take over this project, please contact me. Thank you!
+Currently I don't write Zig. If you'd like to help maintain or take over this project, please contact me. Thank you!
 
 # Installation
 
