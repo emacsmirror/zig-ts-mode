@@ -24,6 +24,14 @@ Currently I don't write Zig. If you'd like to help maintain or take over this pr
 
 # Installation
 
+## From a version control (Emacs 30 or later)
+
+```lisp
+(use-package zig-ts-mode
+  :vc (:url "https://codeberg.org/meow_king/zig-ts-mode"
+       :rev :newest))
+```
+
 ## Elpaca
 
 ``` lisp
