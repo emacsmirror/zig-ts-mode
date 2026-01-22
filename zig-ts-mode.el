@@ -247,7 +247,7 @@
    :feature 'builtin
    :override t
    '((((identifier) @font-lock-builtin-face)
-      (:eq? "_" @font-lock-builtin-face)))
+      (:equal "_" @font-lock-builtin-face)))
    
 
    :language 'zig
@@ -259,13 +259,13 @@
    :feature 'constant
    :override t
    '(((identifier) @font-lock-constant-face
-      (:match? "^[A-Z][A-Z_0-9]+$" @font-lock-constant-face)))
+      (:match "^[A-Z][A-Z_0-9]+$" @font-lock-constant-face)))
 
    :language 'zig
    :feature 'type
    :override t
    '(((identifier) @font-lock-type-face
-      (:match? "^[A-Z_][a-zA-Z0-9_]*" @font-lock-type-face)))
+      (:match "^[A-Z_][a-zA-Z0-9_]*" @font-lock-type-face)))
 
    :language 'zig
    :feature 'type
