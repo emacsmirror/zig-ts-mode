@@ -53,7 +53,7 @@
   "Optimization mode to run code with."
   :type '(choice (const :tag "Optimizations off and safety on" "Debug")
                  (const :tag "Optimizations on and safety on" "ReleaseSafe")
-                 (const :tag "Optimizations on and safety off" "ReleaseSafe")
+                 (const :tag "Optimizations on and safety off" "ReleaseFast")
                  (const :tag "Size optimizations on and safety off" "ReleaseSmall"))
   :safe #'stringp)
 
@@ -61,7 +61,7 @@
   "Optimization mode to run tests with."
   :type '(choice (const :tag "Optimizations off and safety on" "Debug")
                  (const :tag "Optimizations on and safety on" "ReleaseSafe")
-                 (const :tag "Optimizations on and safety off" "ReleaseSafe")
+                 (const :tag "Optimizations on and safety off" "ReleaseFast")
                  (const :tag "Size optimizations on and safety off" "ReleaseSmall"))
   :safe #'stringp)
 
