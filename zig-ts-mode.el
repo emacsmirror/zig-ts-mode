@@ -47,6 +47,7 @@
     "async" "await" "suspend" "nosuspend" "resume"
     "fn"
     "and" "or" "orelse"
+    "return"
     "if" "else" "switch"
     "for" "while" "break" "continue"
     "usingnamespace" "export"
@@ -358,7 +359,7 @@ See `treesit-simple-imenu-settings'."
 
 ;;;; Fill paragraph
 
-(defun zig-ts--fill-paragraph (&optional justify)
+(defun zig-ts--fill-paragraph (&optional _justify)
   "Fill the Zig paragraph at point.
 Use tree-sitter to detect multiline-string and doc-comment.  Return t if
 point is in a multiline_string block or doc comment block, otherwise let
