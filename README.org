@@ -1,0 +1,57 @@
+* Table of Contents                                            :TOC:noexport:
+- [[#zig-tree-sitter-mode][Zig Tree Sitter Mode]]
+- [[#installation][Installation]]
+  - [[#use-package-emacs-30-or-later][use-package (Emacs 30 or later)]]
+  - [[#elpaca][Elpaca]]
+  - [[#straight][Straight]]
+- [[#configuration][Configuration]]
+  - [[#register-zig-ts-mode-with-eglot][Register zig-ts-mode with eglot]]
+
+* Zig Tree Sitter Mode
+
+Official repository is at [[https://codeberg.org/meow_king/zig-ts-mode][CodeBerg]].
+
+Target zig tree sitter grammar: [[https://github.com/tree-sitter-grammars/tree-sitter-zig][tree-sitter-zig]]. If the required
+tree-sitter grammar is not installed, run ~M-x
+zig-ts-install-grammars~ to install.
+
+Tested on Emacs 30 and master branch.
+
+-----
+
+Currently I don't write Zig. If you'd like to help maintain or take
+over this project, please contact me. Thank you!
+
+* Installation
+
+** use-package (Emacs 30 or later)
+
+#+begin_src emacs-lisp
+(use-package zig-ts-mode
+  :vc ( :url "https://codeberg.org/meow_king/zig-ts-mode"
+        :rev :newest))
+#+end_src
+
+** Elpaca
+
+#+begin_src emacs-lisp
+(use-package zig-ts-mode
+  :ensure (:type git :host codeberg :repo "meow_king/zig-ts-mode"))
+#+end_src
+
+** Straight
+
+#+begin_src emacs-lisp
+(use-package zig-ts-mode
+  :ensure '(:type git :host codeberg :repo "meow_king/zig-ts-mode"))
+#+end_src
+
+* Configuration
+
+** Register zig-ts-mode with eglot
+
+#+begin_src emacs-lisp
+(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               '(zig-ts-mode . ("zls"))))
+#+end_src

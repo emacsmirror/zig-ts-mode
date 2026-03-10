@@ -2,12 +2,14 @@
 
 ;; Copyright (C) 2023-2026 meowking <mr.meowking@tutamail.com>
 
-;; Version: 0.3.0
 ;; Author: meowking <mr.meowking@tutamail.com>
+;; Homepage: https://codeberg.org/meow_king/zig-ts-mode
 ;; Keywords: zig languages tree-sitter
-;; URL: https://codeberg.org/meow_king/zig-ts-mode
-;; License: GNU General Public License >= 3
+
+;; Package-Version: 0.3.0
 ;; Package-Requires: ((emacs "29.1"))
+
+;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;; This file is NOT part of Emacs.
 
@@ -22,15 +24,15 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
 ;; Provide font-lock, indentation, and navigation for the Zig
-;; programming language (https://ziglang.org).
+;; programming language <https://ziglang.org/>.
 ;;
-;; For the tree-sitter grammar this mode is based on,
-;; see https://github.com/tree-sitter-grammars/tree-sitter-zig.
+;; For the tree-sitter grammar this mode is based on, see
+;; <https://github.com/tree-sitter-grammars/tree-sitter-zig/>.
 
 ;;; Code:
 
@@ -456,10 +458,10 @@ SOFT works the same as in `comment-indent-new-line'."
 
 ;; TODO: add markdown-inline support
 (defconst zig-ts-grammar-recipes
-  '((zig "https://github.com/tree-sitter-grammars/tree-sitter-zig"))
+  '((zig . ("https://github.com/tree-sitter-grammars/tree-sitter-zig")))
   "Tree-sitter grammar recipes for Zig.
-Each entry is a list of (LANGUAGE URL REV SOURCE-DIR).  Suitable for use
-as the value of `treesit-language-source-alist'.")
+Each entry is a list of (LANG . (URL REVISION SOURCE-DIR)).  Suitable
+for use as the value of `treesit-language-source-alist'.")
 
 (defun zig-ts-install-grammars ()
   "Install required language grammars if not already available."
