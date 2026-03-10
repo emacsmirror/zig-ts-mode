@@ -1,3 +1,5 @@
+//! Hi
+
 const std = @import("std");
 const builtin = @import("builtin");
 const assert = std.debug.assert;
@@ -21,10 +23,7 @@ fn foo(w: *Wat) callconv(.c) void {
     bar(w);
 }
 
-
-const o = opaque {
-    
-};
+const o = opaque {};
 
 const Value3 = enum(u4) {
     a,
@@ -35,7 +34,6 @@ const Value3 = enum(u4) {
 };
 
 // comment
-//! Hi
 
 const POINT = struct {
     x: f32,
@@ -46,7 +44,6 @@ const AllocationError = error{
     OutOfMemory,
 };
 
-
 pub fn main() void {
     var y: i32 = 5678;
 
@@ -55,13 +52,12 @@ pub fn main() void {
         y: f32,
     };
 
-
     y += 1;
 
     var _ = 1;
 
-    const my_user = User {
-        .id = 1, 
+    const my_user = User{
+        .id = 1,
         .username = "Christina",
         .active = true,
     };
@@ -70,7 +66,7 @@ pub fn main() void {
         y += 1;
         break :blk y;
     };
-    
+
     var z: [*c]T = "1\n";
 
     print("{d}", .{y});

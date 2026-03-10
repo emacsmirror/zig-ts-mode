@@ -8,6 +8,15 @@ const Point = struct {
     y: f32,
 };
 
+const hello_world_in_c =
+    \\#include <stdio.h>
+    \\
+    \\int main(int argc, char **argv) {
+    \\    printf("hello world\n");
+    \\    return 0;
+    \\}
+;
+
 test "enum switch" {
     const p = Foo.number;
     const what_is_it = switch (p) {
@@ -15,14 +24,7 @@ test "enum switch" {
     };
 }
 
-const value = enum(u32) {
-    zero,
-    one,
-    two
-};
-
-
-
+const value = enum(u32) { zero, one, two };
 
 fn main() !void {
     var x = 1;
@@ -40,30 +42,28 @@ fn main() !void {
         2;
 
     const l = x: while (true)
-        break asdfasdf
+        break asdfasdf;
 
     const l = x: while (true)
         asdfasdfasdf;
-    
+}
+
+pub inline fn getPageDirectoryAddress() u64 {
+    return switch (builtin.cpu.arch) {
+        .x86, .x86_64 => asm volatile ("movq %%cr3, %[value]"
+            : [value] "=&r" (-> u64),
+        ),
+        else => 0,
+    };
 }
 
 fn main() !void {
     var x = 1;
-    try testing.expectEqual(
-        @as(u19, 0xsadfasdf),
-        PackedInto(u18, .little )
-    );
+    try testing.expectEqual(@as(u19, 0x12345678), PackedInto(u18, .little));
 
     foo
         .hi
         .waht;
-
-    errdefer asm volatile (""
-        : [_] "=r,m" (k)
-        : [_] "r,m" (a)
-        : ""
-    );
-
 
     while (true)
         break;
@@ -82,7 +82,6 @@ fn main() !void {
         1
     else
         2;
-            
 
     const z = if (true)
         1
@@ -94,52 +93,40 @@ fn main() !void {
         \\ hi
         \\ what
     ;
-    
-
 }
 
 pub const descriptions = .{
-    .hello =
-        1,
+    .hello = 1,
     .output =
-        \\ hello
-        \\ what
+    \\ hello
+    \\ what
     ,
-}
+};
 
 test "PackedIntIo" {
-    const bytes = [_]u8 {
-        
-    };
+    const bytes = [_]u8{};
 }
 
 fn main() !void {
     var x = 1;
-    try testing.expectEqual(
-        @as(u18, 0x3abcd),
-        PackedIntIo(u18, .little)
-            .get(&bytes,
-                0, 3
-            )
-            // hello
-            .hi
-            // hello
-            .hi
-            // hello
-    );
+    try testing.expectEqual(@as(u18, 0x3abcd), PackedIntIo(
+        u18,
+        .little,
+    )
+        .get(&bytes, 0, 3)
+        // hello
+        .hi
+        // hello
+        .hi);
 
     foo
         .hi
         .what;
     // hello
 
-    errdefer asm volatile (""
-        : [_] "=r,m" (k)
-        : [_] "r,m" (a)
-        : ""
-    );
+    errdefer getPageDirectoryAddress();
 
-    const default = addrspace(0, 1);
+    const default: u32 align(4) addrspace(.shared) = 10;
 
     while (i < 10) {
         i += 1;
@@ -160,7 +147,6 @@ fn main() !void {
         1
     else
         2;
-    
 
     if (true)
         debug.print("hi")
@@ -176,7 +162,6 @@ fn main() !void {
         1
     else
         2;
-
 
     const y = outer: for (items) |value|
         // Break and continue are supported.
@@ -217,7 +202,7 @@ fn main() !void {
     ;
 
     const str =
-    \\ El Psy Congaroo
+        \\ El Psy Congaroo
     ;
 }
 
@@ -226,32 +211,26 @@ pub const descriptions = .{};
 pub const asdfasdf = enum {
     .hi = 1,
     .hello =
-    \\ what
-    \\ do you
+        \\ what
+        \\ do you
 };
 
-
 pub const descriptions = .{
-    .hello =
-        1,
+    .hello = 1,
     .output =
-        \\ hello
-        \\ what
+    \\ hello
+    \\ what
     ,
 };
 
 pub const descriptions = .{
     .hello = 1,
     .output =
-        \\ hello
-        \\ hi
+    \\ hello
+    \\ hi
     ,
-}
+};
 
 test "PackedIntIo" {
-    const bytes = [_]u8{
-        0b01101_000, 0b01011_110,
-        0b00011_101
-    };
+    const bytes = [_]u8{ 0b01101_000, 0b01011_110, 0b00011_101 };
 }
-
