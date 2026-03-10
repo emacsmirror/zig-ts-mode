@@ -29,6 +29,9 @@
 
 (require 'treesit)
 
+(eval-when-compile
+  (require 'rx))
+
 (defgroup zig-ts nil
   "Tree Sitter support for Zig."
   :link '(url-link "https://ziglang.org/")
@@ -41,26 +44,26 @@
   :safe 'natnump
   :group 'zig-ts)
 
-(defconst zig-ts-mode--keywords
-  '("asm" "defer" "errdefer" "test" "error" "const" "var"
-    "struct" "union" "enum" "opaque"
-    "async" "await" "suspend" "nosuspend" "resume"
-    "fn"
-    "and" "or" "orelse"
-    "return"
-    "if" "else" "switch"
-    "for" "while" "break" "continue"
-    "usingnamespace" "export"
-    "try" "catch"
-    "volatile" "allowzero" "noalias" "addrspace" "align" "callconv" "linksection" "pub"
-    "inline" "noinline" "extern" "comptime" "packed" "threadlocal"))
+(defcustom zig-ts-zig-bin "zig"
+  "Path to zig executable."
+  :type 'file
+  :safe #'stringp)
 
+(defcustom zig-ts-run-optimization-mode "Debug"
+  "Optimization mode to run code with."
+  :type '(choice (const :tag "Optimizations off and safety on" "Debug")
+                 (const :tag "Optimizations on and safety on" "ReleaseSafe")
+                 (const :tag "Optimizations on and safety off" "ReleaseSafe")
+                 (const :tag "Size optimizations on and safety off" "ReleaseSmall"))
+  :safe #'stringp)
 
-(defconst zig-ts-mode--operators
-  '("=" "*=" "*%=" "*|=" "/=" "%=" "+=" "+%=" "+|=" "-=" "-%=" "-|=" "<<=" "<<|=" ">>="
-    "&=" "^=" "|=" "!" "~" "-" "-%" "&" "==" "!=" ">" ">=" "<=" "<" "^" "|" "<<" ">>"
-    "<<|" "+" "++" "+%" "+|" "-|" "*" "/" "%" "**" "*%" "*|" "||" ".*" ".?" "?" ".."))
-
+(defcustom zig-ts-test-optimization-mode "Debug"
+  "Optimization mode to run tests with."
+  :type '(choice (const :tag "Optimizations off and safety on" "Debug")
+                 (const :tag "Optimizations on and safety on" "ReleaseSafe")
+                 (const :tag "Optimizations on and safety off" "ReleaseSafe")
+                 (const :tag "Size optimizations on and safety off" "ReleaseSmall"))
+  :safe #'stringp)
 
 (defvar zig-ts-mode--syntax-table
   (let ((table (make-syntax-table)))
@@ -98,6 +101,34 @@
 
     table)
   "Syntax table for `zig-ts-mode'.")
+
+;;;; Font-locking
+;;
+;;
+;; See https://github.com/tree-sitter-grammars/tree-sitter-zig/blob/master/queries/highlights.scm
+;;
+;; Ideally the font-locking should be aligned with the upstream highlights.scm.
+
+(defconst zig-ts-mode--keywords
+  '("asm" "defer" "errdefer" "test" "error" "const" "var"
+    "struct" "union" "enum" "opaque"
+    "async" "await" "suspend" "nosuspend" "resume"
+    "fn"
+    "and" "or" "orelse"
+    "return"
+    "if" "else" "switch"
+    "for" "while" "break" "continue"
+    "usingnamespace" "export"
+    "try" "catch"
+    "volatile" "allowzero" "noalias" "addrspace" "align" "callconv" "linksection" "pub"
+    "inline" "noinline" "extern" "comptime" "packed" "threadlocal")
+  "Zig keywords for tree-sitter font-locking.")
+
+(defconst zig-ts-mode--operators
+  '("=" "*=" "*%=" "*|=" "/=" "%=" "+=" "+%=" "+|=" "-=" "-%=" "-|=" "<<=" "<<|=" ">>="
+    "&=" "^=" "|=" "!" "~" "-" "-%" "&" "==" "!=" ">" ">=" "<=" "<" "^" "|" "<<" ">>"
+    "<<|" "+" "++" "+%" "+|" "-|" "*" "/" "%" "**" "*%" "*|" "||" ".*" ".?" "?" "..")
+  "Zig operators for tree-sitter font-locking.")
 
 (defun zig-ts-mode-comment-setup ()
   "Setup comment related stuffs for `zig-ts-mode'."
@@ -158,7 +189,7 @@
 
    :language 'zig
    :feature 'builtin
-   '([(builtin_identifier) "c"] @font-lock-builtin-face
+   '([(builtin_identifier) "c" "..."] @font-lock-builtin-face
      (calling_convention "(" _ @font-lock-builtin-face ")"))
 
    :language 'zig
@@ -206,8 +237,8 @@
    :feature 'operator
    `([,@zig-ts-mode--operators] @font-lock-operator-face)
 
+   ;; Overrides
 
-   ;; Overrides ================================================================
    :language 'zig
    :feature 'type
    :override t
@@ -225,7 +256,6 @@
    :override t
    '((((identifier) @font-lock-builtin-face)
       (:equal "_" @font-lock-builtin-face)))
-
 
    :language 'zig
    :feature 'escape-sequence
@@ -256,8 +286,8 @@
    :language 'zig
    :feature 'error
    :override t
-   '((ERROR) @font-lock-warning-face)
-   ))
+   '((ERROR) @font-lock-warning-face))
+  "Tree-sitter font lock settings for `zig-ts-mode'.")
 
 (defvar zig-ts-mode--indent-rules
   `((zig
@@ -396,6 +426,60 @@ SOFT works the same as in `comment-indent-new-line'."
       (delete-region (line-beginning-position) (point))
       (insert (make-string offset ?\s) "//" whitespaces))))
 
+;;;; CLI commands
+;;
+;; copied from zig-mode
+
+(defun zig-ts--run-cmd (cmd &optional source &rest args)
+  "Use compile command to execute a zig CMD with ARGS if given.
+If given a SOURCE, execute the CMD on it."
+  (let ((cmd-args (if source (cons source args) args)))
+    (save-some-buffers)
+    (compilation-start (mapconcat 'shell-quote-argument
+                                  `(,zig-ts-zig-bin ,cmd ,@cmd-args)
+                                  " "))))
+
+(defun zig-ts-build ()
+  "Compile using `zig build`."
+  (interactive)
+  (zig-ts--run-cmd "build"))
+
+(defun zig-ts-build-exe ()
+  "Create executable from source or object file."
+  (interactive)
+  (zig-ts--run-cmd "build-exe" (file-local-name (buffer-file-name))))
+
+(defun zig-ts-build-lib ()
+  "Create library from source or assembly."
+  (interactive)
+  (zig-ts--run-cmd "build-lib" (file-local-name (buffer-file-name))))
+
+(defun zig-ts-build-obj ()
+  "Create object from source or assembly."
+  (interactive)
+  (zig-ts--run-cmd "build-obj" (file-local-name (buffer-file-name))))
+
+(defun zig-ts-test ()
+  "Test buffer using `zig test`."
+  (interactive)
+  (zig-ts--run-cmd "test" (file-local-name (buffer-file-name)) "-O" zig-ts-test-optimization-mode))
+
+(defun zig-ts-run ()
+  "Create an executable from the current buffer and run it immediately."
+  (interactive)
+  (zig-ts--run-cmd "run" (file-local-name (buffer-file-name)) "-O" zig-ts-run-optimization-mode))
+
+;;;; Major mode definitions
+
+(defvar-keymap zig-ts-mode-map
+  :doc "Keymap for `zig-ts-mode'."
+  "C-c C-b C-b" #'zig-ts-build
+  "C-c C-b C-e" #'zig-ts-build-exe
+  "C-c C-b C-l" #'zig-ts-build-lib
+  "C-c C-b C-o" #'zig-ts-build-obj
+  "C-c C-r" #'zig-ts-run
+  "C-c C-t" #'zig-ts-test)
+
 ;;;###autoload
 (define-derived-mode zig-ts-mode prog-mode "Zig"
   "Major mode for editing Zig, powered by tree-sitter."
@@ -406,6 +490,9 @@ SOFT works the same as in `comment-indent-new-line'."
     (user-error "Tree-sitter for Zig isn't available"))
 
   (treesit-parser-create 'zig)
+
+  ;; Compile
+  (setq-local compile-command "zig build")
 
   ;; Comments
   (zig-ts-mode-comment-setup)
@@ -451,7 +538,7 @@ SOFT works the same as in `comment-indent-new-line'."
   (treesit-major-mode-setup))
 
 ;;;###autoload
-(add-to-list 'auto-mode-alist '("\\.zig\\(?:\\.zon\\)?\\'" . zig-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.\\(zig\\|zon\\)\\'" . zig-ts-mode))
 
 (provide 'zig-ts-mode)
 ;;; zig-ts-mode.el ends here
