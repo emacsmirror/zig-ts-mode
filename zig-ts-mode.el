@@ -135,19 +135,29 @@
 
 (defconst zig-ts--operators
   '("=" "*=" "*%=" "*|=" "/=" "%=" "+=" "+%=" "+|=" "-=" "-%=" "-|=" "<<=" "<<|=" ">>="
-    "&=" "^=" "|=" "!" "~" "-" "-%" "&" "==" "!=" ">" ">=" "<=" "<" "^" "|" "<<" ">>"
-    "<<|" "+" "++" "+%" "+|" "-|" "*" "/" "%" "**" "*%" "*|" "||" ".*" ".?" "?" "..")
+    "&=" "^=" "|=" "!" "~" "-" "-%" "&" "==" "!=" ">" ">=" "<=" "<" "^" "&" "|" "<<" ">>"
+    "<<|" "+" "++" "+%" "-%" "+|" "-|" "*" "/" "%" "**" "*%" "*|" "||" ".*" ".?" "?" "..")
   "Zig operators for tree-sitter font-locking.")
 
 (defvar zig-ts--font-lock-feature-list
-  '(( comment definition)
-    ( keyword string type)
-    ( builtin constant escape-sequence label number)
-    ( bracket delimiter function variable operator error))
+  '((comment definition)
+    (keyword string type)
+    (assignment builtin constant escape-sequence label number)
+    (bracket delimiter error function operator property variable))
   "`treesit-font-lock-feature-list' for `zig-ts-mode'.")
 
 (defvar zig-ts--font-lock-settings
   (treesit-font-lock-rules
+   :language 'zig
+   :feature 'bracket
+   '((["[" "]" "(" ")" "{" "}"]) @font-lock-bracket-face
+     (payload "|" @font-lock-bracket-face))
+
+   :language 'zig
+   :feature 'builtin
+   '(([(builtin_identifier) "c" "..."]) @font-lock-builtin-face
+     (calling_convention "(" _ @font-lock-builtin-face ")"))
+
    :language 'zig
    :feature 'comment
    '((((comment) @font-lock-doc-face)
@@ -155,31 +165,72 @@
      (comment) @font-lock-comment-face)
 
    :language 'zig
+   :feature 'delimiter
+   '(([";" "." "," ":" "=>" "->"]) @font-lock-delimiter-face)
+
+   :language 'zig
    :feature 'definition
    '((function_declaration name: (identifier) @font-lock-function-name-face)
+     (struct_declaration (container_field
+                          name: (identifier) @font-lock-property-name-face))
+     (enum_declaration (container_field
+                        name: (identifier) @font-lock-property-name-face))
+     (union_declaration (container_field
+                         name: (identifier) @font-lock-property-name-face))
+     (variable_declaration (identifier) @font-lock-type-face
+                           "=" [(struct_declaration)
+                                (enum_declaration)
+                                (union_declaration)
+                                (opaque_declaration)])
      (variable_declaration "const" (identifier) @font-lock-constant-face)
      (variable_declaration :anchor (identifier) @font-lock-variable-name-face))
 
    :language 'zig
+   :feature 'assignment
+   '((initializer_list
+      (assignment_expression
+       left: (field_expression
+              "."
+              member: (identifier) @font-lock-property-name-face)))
+     (variable_declaration (field_expression
+                            "."
+                            member: (identifier) @font-lock-property-use-face)))
+
+   :language 'zig
+   :feature 'function
+   '((call_expression function: (identifier) @font-lock-function-call-face)
+     (call_expression
+      function: (field_expression
+                 member: (identifier) @font-lock-function-call-face)))
+
+   :language 'zig
    :feature 'keyword
-   `([,@zig-ts--keywords] @font-lock-keyword-face)
+   `(([,@zig-ts--keywords]) @font-lock-keyword-face)
+
+   :language 'zig
+   :feature 'number
+   '(([(integer) (float)]) @font-lock-number-face)
+
+   :language 'zig
+   :feature 'operator
+   `(([,@zig-ts--operators]) @font-lock-operator-face)
 
    :language 'zig
    :feature 'string
-   '([(character)
-      (string)
-      (multiline_string)]
-     @font-lock-string-face)
+   '(([(character) (string) (multiline_string)]) @font-lock-string-face)
 
    :language 'zig
-   :feature 'builtin
-   '([(builtin_identifier) "c" "..."] @font-lock-builtin-face
-     (calling_convention "(" _ @font-lock-builtin-face ")"))
+   :feature 'type
+   '((parameter type: (identifier) @font-lock-type-face)
+     (enum_declaration (container_field
+                        type: (identifier) @font-lock-type-face))
+     ((identifier) @font-lock-type-face
+      (:match "^[A-Z_][a-zA-Z0-9_]*" @font-lock-type-face))
+     (([(builtin_type) "anyframe"]) @font-lock-type-face))
 
    :language 'zig
    :feature 'constant
-   '([(boolean) "null" "unreachable" "undefined"] @font-lock-constant-face
-     (field_expression "." member: (identifier) @font-lock-constant-face))
+   '(([(boolean) "null" "unreachable" "undefined"]) @font-lock-constant-face)
 
    :language 'zig
    :feature 'label
@@ -187,59 +238,28 @@
      (break_label (identifier) @font-lock-constant-face))
 
    :language 'zig
-   :feature 'number
-   '([(integer) (float)] @font-lock-number-face)
+   :feature 'builtin
+   '((((identifier) @font-lock-builtin-face)
+      (:equal "_" @font-lock-builtin-face)))
 
    :language 'zig
-   :feature 'type
-   '([(parameter type: (identifier) @font-lock-type-face)]
-     [(builtin_type) "anyframe"] @font-lock-type-face)
-
-   :language 'zig
-   :feature 'bracket
-   '(["[" "]" "(" ")" "{" "}"] @font-lock-bracket-face
-     (payload "|" @font-lock-bracket-face))
-
-   :language 'zig
-   :feature 'delimiter
-   '([";" "." "," ":" "=>" "->"] @font-lock-delimiter-face)
-
-   :language 'zig
-   :feature 'function
-   '((call_expression function: (identifier) @font-lock-function-call-face)
+   :feature 'property
+   '((field_expression "." member: (identifier) @font-lock-property-use-face)
      (call_expression
-      function: (field_expression member: (identifier) @font-lock-function-call-face)))
+      function: (field_expression
+                 object: (field_expression
+                          member: (identifier) @font-lock-property-use-face))))
+
+   ;; Must be under type, otherwise can be highlighted as constants
+   :language 'zig
+   :feature 'constant
+   '(((identifier) @font-lock-constant-face
+      (:match "^[A-Z][A-Z_0-9]+$" @font-lock-constant-face)))
 
    :language 'zig
    :feature 'variable
    '((field_initializer "." (identifier) @font-lock-variable-use-face)
-     (field_expression (_) member: (identifier) @font-lock-variable-use-face)
-     (container_field name: (identifier) @font-lock-variable-use-face)
      (identifier) @font-lock-variable-use-face)
-
-   :language 'zig
-   :feature 'operator
-   `([,@zig-ts--operators] @font-lock-operator-face)
-
-   ;; Overrides
-
-   :language 'zig
-   :feature 'type
-   :override t
-   '((enum_declaration (container_field type: (identifier) @font-lock-type-face)))
-
-   :language 'zig
-   :feature 'variable
-   :override t
-   '((initializer_list
-      (assignment_expression
-       left: (field_expression "." member: (identifier) @font-lock-variable-use-face))))
-
-   :language 'zig
-   :feature 'builtin
-   :override t
-   '((((identifier) @font-lock-builtin-face)
-      (:equal "_" @font-lock-builtin-face)))
 
    :language 'zig
    :feature 'escape-sequence
@@ -247,31 +267,10 @@
    '((escape_sequence) @font-lock-escape-face)
 
    :language 'zig
-   :feature 'constant
-   :override t
-   '(((identifier) @font-lock-constant-face
-      (:match "^[A-Z][A-Z_0-9]+$" @font-lock-constant-face)))
-
-   :language 'zig
-   :feature 'type
-   :override t
-   '(((identifier) @font-lock-type-face
-      (:match "^[A-Z_][a-zA-Z0-9_]*" @font-lock-type-face)))
-
-   :language 'zig
-   :feature 'type
-   :override t
-   '((variable_declaration
-      (identifier) @font-lock-type-face
-      "="
-      [(struct_declaration) (enum_declaration)
-       (union_declaration) (opaque_declaration)]))
-
-   :language 'zig
    :feature 'error
    :override t
    '((ERROR) @font-lock-warning-face))
-  "Tree-sitter font lock settings for `zig-ts-mode'.")
+  "`treesit-font-lock-settings' for `zig-ts-mode'.")
 
 ;;;; Indentation
 ;;
