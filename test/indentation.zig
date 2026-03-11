@@ -1,13 +1,3 @@
-const Point = struct {
-    x: f32,
-    y: f32,
-};
-
-const Point = struct {
-    x: f32,
-    y: f32,
-};
-
 const hello_world_in_c =
     \\#include <stdio.h>
     \\
@@ -17,6 +7,27 @@ const hello_world_in_c =
     \\}
 ;
 
+test "multiline" {
+    const hello_world_in_c =
+        \\#include <stdio.h>
+        \\
+        \\int main(int argc, char **argv) {
+        \\    printf("hello world\n");
+        \\    return 0;
+        \\}
+    ;
+}
+
+test "enum" {
+    const enum1 = enum(u32) { zero, one, two };
+
+    const enum2 = enum(u32) {
+        zero,
+        one,
+        two,
+    };
+}
+
 test "enum switch" {
     const p = Foo.number;
     const what_is_it = switch (p) {
@@ -24,7 +35,53 @@ test "enum switch" {
     };
 }
 
-const value = enum(u32) { zero, one, two };
+pub const asdfasdf = enum {
+    .hi =
+        1,
+    .hello =
+        \\ what
+        \\ do you
+    ,
+    .a = 2,
+};
+
+test "struct" {
+    const Struct1 = struct { x: f32, y: f32 };
+
+    const Struct2 = struct {
+        x: f32,
+        y: f32,
+    };
+
+    const a =
+        Struct1{ .x = 1, .y = 2 };
+
+    const b =
+        Struct2{
+            .x = 1,
+            .y = 2,
+        };
+}
+
+pub const descriptions = .{
+    .hello = 1,
+    .output =
+    \\ hello
+    \\ what
+    ,
+    .world = 2,
+};
+
+inline fn asdf() !void {}
+
+pub inline fn getPageDirectoryAddress() u64 {
+    return switch (builtin.cpu.arch) {
+        .x86, .x86_64 => asm volatile ("movq %%cr3, %[value]"
+            : [value] "=&r" (-> u64),
+        ),
+        else => 0,
+    };
+}
 
 fn main() !void {
     var x = 1;
@@ -46,27 +103,21 @@ fn main() !void {
 
     const l = x: while (true)
         asdfasdfasdf;
-}
 
-pub inline fn getPageDirectoryAddress() u64 {
-    return switch (builtin.cpu.arch) {
-        .x86, .x86_64 => asm volatile ("movq %%cr3, %[value]"
-            : [value] "=&r" (-> u64),
-        ),
-        else => 0,
-    };
-}
-
-fn main() !void {
     var x = 1;
-    try testing.expectEqual(@as(u19, 0x12345678), PackedInto(u18, .little));
 
-    foo
-        .hi
-        .waht;
+    const str =
+        \\ hello
+    ;
+
+    try testing.expectEqual(@as(u19, 0x12345678), PackedInto(u18, .little));
 
     while (true)
         break;
+
+    while (true) {
+        break;
+    }
 
     if (true) {
         true;
@@ -74,11 +125,7 @@ fn main() !void {
         false;
     }
 
-    const str =
-        \\ hello
-    ;
-
-    const z = if (true)
+    if (true)
         1
     else
         2;
@@ -87,27 +134,6 @@ fn main() !void {
         1
     else
         2;
-
-    const str =
-        \\ El
-        \\ hi
-        \\ what
-    ;
-}
-
-pub const descriptions = .{
-    .hello = 1,
-    .output =
-    \\ hello
-    \\ what
-    ,
-};
-
-test "PackedIntIo" {
-    const bytes = [_]u8{};
-}
-
-fn main() !void {
     var x = 1;
     try testing.expectEqual(@as(u18, 0x3abcd), PackedIntIo(
         u18,
@@ -142,11 +168,6 @@ fn main() !void {
     } else {
         false;
     }
-
-    if (true)
-        1
-    else
-        2;
 
     if (true)
         debug.print("hi")
@@ -204,33 +225,4 @@ fn main() !void {
     const str =
         \\ El Psy Congaroo
     ;
-}
-
-pub const asdfasdf = enum {};
-pub const descriptions = .{};
-pub const asdfasdf = enum {
-    .hi = 1,
-    .hello =
-        \\ what
-        \\ do you
-};
-
-pub const descriptions = .{
-    .hello = 1,
-    .output =
-    \\ hello
-    \\ what
-    ,
-};
-
-pub const descriptions = .{
-    .hello = 1,
-    .output =
-    \\ hello
-    \\ hi
-    ,
-};
-
-test "PackedIntIo" {
-    const bytes = [_]u8{ 0b01101_000, 0b01011_110, 0b00011_101 };
 }

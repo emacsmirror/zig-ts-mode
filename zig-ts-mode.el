@@ -289,21 +289,35 @@
      ((node-is "]") parent-bol 0)
      ((node-is "}") parent-bol 0)
 
-     ((parent-is "block") parent-bol zig-ts-indent-offset)
+     ((parent-is "multiline_string") prev-line 0)
+
+     ((node-is ";") parent-bol 0)
+
+     ((match "else" "if") parent-bol 0)
+     ((parent-is "if") parent-bol zig-ts-indent-offset)
+     ((parent-is "else") parent-bol zig-ts-indent-offset)
+
+     ((parent-is "while") parent-bol zig-ts-indent-offset)
+
+     ((parent-is "for") parent-bol zig-ts-indent-offset)
+
+     ((parent-is "switch") parent-bol zig-ts-indent-offset)
+
+     ((parent-is "assignment_expression") parent-bol 0)
+     ((parent-is "field_expression") parent-bol zig-ts-indent-offset)
+
      ((parent-is "variable_declaration") parent-bol zig-ts-indent-offset)
      ((parent-is "struct_declaration") parent-bol zig-ts-indent-offset)
      ((parent-is "enum_declaration") parent-bol zig-ts-indent-offset)
      ((parent-is "union_declaration") parent-bol zig-ts-indent-offset)
-     ((parent-is "switch_expression") parent-bol zig-ts-indent-offset)
-     ((match "else" "if_expression") parent-bol 0)
-     ((parent-is "if_expression") parent-bol zig-ts-indent-offset)
-     ((parent-is "while_expression") parent-bol zig-ts-indent-offset)
-     ((parent-is "for_expression") parent-bol zig-ts-indent-offset)
+     ((parent-is "container_field") parent-bol zig-ts-indent-offset)
      ((parent-is "initializer_list") parent-bol zig-ts-indent-offset)
+
+     ((parent-is "block") parent-bol zig-ts-indent-offset)
      ((parent-is "arguments") parent-bol zig-ts-indent-offset)
-     ((match nil "assignment_expression") parent-bol 0)
-     ((node-is "multiline_string") parent-bol zig-ts-indent-offset)))
-  "Tree-sitter indent rules for `zig-ts-mode'.")
+
+     (no-node parent-bol 0)))
+  "`treesit-simple-indent-rules' for `zig-ts-mode'.")
 
 ;;;; Find the definition at point (some Emacs commands use this internally)
 
