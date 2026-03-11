@@ -1,15 +1,18 @@
-;;; zig-ts-mode.el --- Tree Sitter support for Zig -*- lexical-binding: t; -*-
+;;; zig-ts-mode.el --- Major mode for Zig code -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2023 meowking <mr.meowking@tutamail.com>
+;; Copyright (C) 2023-2026 meowking <mr.meowking@tutamail.com>
 
-;; Version: 0.2.0
 ;; Author: meowking <mr.meowking@tutamail.com>
+;; Homepage: https://codeberg.org/meow_king/zig-ts-mode
 ;; Keywords: zig languages tree-sitter
-;; URL: https://codeberg.org/meow_king/zig-ts-mode
-;; License: GNU General Public License >= 3
+
+;; Package-Version: 0.3.0
 ;; Package-Requires: ((emacs "29.1"))
 
+;; SPDX-License-Identifier: GPL-3.0-or-later
+
 ;; This file is NOT part of Emacs.
+
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
@@ -21,25 +24,31 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
+
+;; Provide font-lock, indentation, and navigation for the Zig
+;; programming language <https://ziglang.org/>.
+;;
+;; For the tree-sitter grammar this mode is based on, see
+;; <https://github.com/tree-sitter-grammars/tree-sitter-zig/>.
 
 ;;; Code:
 
 (require 'treesit)
-
-(eval-when-compile
-  (require 'rx))
+(require 'seq)
+(require 'rx)
 
 (defgroup zig-ts nil
-  "Tree Sitter support for Zig."
-  :link '(url-link "https://ziglang.org/")
+  "Major mode for editing Zig code."
+  :link '(url-link "https://codeberg.org/meow_king/zig-ts-mode")
+  :link '(url-link "https://ziglang.org")
   :prefix "zig-ts-"
   :group 'languages)
 
-(defcustom zig-ts-mode-indent-offset 4
-  "Indent Zig code by this number of spaces."
+(defcustom zig-ts-indent-offset 4
+  "Number of spaces for each indentation step in `zig-ts-mode'."
   :type 'natnum
   :safe 'natnump
   :group 'zig-ts)
@@ -65,7 +74,7 @@
                  (const :tag "Size optimizations on and safety off" "ReleaseSmall"))
   :safe #'stringp)
 
-(defvar zig-ts-mode--syntax-table
+(defvar zig-ts--syntax-table
   (let ((table (make-syntax-table)))
     ;; Comments: Zig only has // comments.
     ;;
@@ -109,7 +118,7 @@
 ;;
 ;; Ideally the font-locking should be aligned with the upstream highlights.scm.
 
-(defconst zig-ts-mode--keywords
+(defconst zig-ts--keywords
   '("asm" "defer" "errdefer" "test" "error" "const" "var"
     "struct" "union" "enum" "opaque"
     "async" "await" "suspend" "nosuspend" "resume"
@@ -124,45 +133,20 @@
     "inline" "noinline" "extern" "comptime" "packed" "threadlocal")
   "Zig keywords for tree-sitter font-locking.")
 
-(defconst zig-ts-mode--operators
+(defconst zig-ts--operators
   '("=" "*=" "*%=" "*|=" "/=" "%=" "+=" "+%=" "+|=" "-=" "-%=" "-|=" "<<=" "<<|=" ">>="
     "&=" "^=" "|=" "!" "~" "-" "-%" "&" "==" "!=" ">" ">=" "<=" "<" "^" "|" "<<" ">>"
     "<<|" "+" "++" "+%" "+|" "-|" "*" "/" "%" "**" "*%" "*|" "||" ".*" ".?" "?" "..")
   "Zig operators for tree-sitter font-locking.")
 
-(defun zig-ts-mode-comment-setup ()
-  "Setup comment related stuffs for `zig-ts-mode'."
-  (setq-local comment-start "// ")
-  (setq-local comment-end "")
-
-  (setq-local comment-start-skip (rx (group (seq "/" (+ "/")))
-                                     (* (syntax whitespace))))
-  (setq-local comment-end-skip (rx (* (syntax whitespace))
-                                   (group (syntax comment-end))))
-
-  ;; Fill paragraph
-  (setq-local adaptive-fill-mode t)
-  (setq-local fill-paragraph-function #'zig-ts--fill-paragraph)
-
-  (setq-local paragraph-start
-              (rx (or (seq (* (syntax whitespace))
-                           (group (* (seq "/" (+ "/"))))
-                           (* (syntax whitespace))
-                           eol)
-                      "\f")))
-  (setq-local paragraph-separate paragraph-start)
-
-  (setq-local comment-line-break-function #'zig-ts--comment-indent-new-line)
-  (setq-local comment-multi-line t))
-
-(defvar zig-ts-mode--font-lock-feature-list
+(defvar zig-ts--font-lock-feature-list
   '(( comment definition)
     ( keyword string type)
     ( builtin constant escape-sequence label number)
     ( bracket delimiter function variable operator error))
   "`treesit-font-lock-feature-list' for `zig-ts-mode'.")
 
-(defvar zig-ts-mode--font-lock-settings
+(defvar zig-ts--font-lock-settings
   (treesit-font-lock-rules
    :language 'zig
    :feature 'comment
@@ -178,7 +162,7 @@
 
    :language 'zig
    :feature 'keyword
-   `([,@zig-ts-mode--keywords] @font-lock-keyword-face)
+   `([,@zig-ts--keywords] @font-lock-keyword-face)
 
    :language 'zig
    :feature 'string
@@ -235,7 +219,7 @@
 
    :language 'zig
    :feature 'operator
-   `([,@zig-ts-mode--operators] @font-lock-operator-face)
+   `([,@zig-ts--operators] @font-lock-operator-face)
 
    ;; Overrides
 
@@ -289,7 +273,13 @@
    '((ERROR) @font-lock-warning-face))
   "Tree-sitter font lock settings for `zig-ts-mode'.")
 
-(defvar zig-ts-mode--indent-rules
+;;;; Indentation
+;;
+;; Tree-sitter indentation rules for Zig
+;;
+;; Adapted from nvim indentation queries in nvim-treesitter
+
+(defvar zig-ts--indent-rules
   `((zig
      ;; Top-level definitions: column 0
      ((parent-is "source_file") column-0 0)
@@ -299,23 +289,30 @@
      ((node-is "]") parent-bol 0)
      ((node-is "}") parent-bol 0)
 
-     ((parent-is "block") parent-bol zig-ts-mode-indent-offset)
-     ((parent-is "variable_declaration") parent-bol zig-ts-mode-indent-offset)
-     ((parent-is "struct_declaration") parent-bol zig-ts-mode-indent-offset)
-     ((parent-is "enum_declaration") parent-bol zig-ts-mode-indent-offset)
-     ((parent-is "union_declaration") parent-bol zig-ts-mode-indent-offset)
-     ((parent-is "switch_expression") parent-bol zig-ts-mode-indent-offset)
+     ((parent-is "block") parent-bol zig-ts-indent-offset)
+     ((parent-is "variable_declaration") parent-bol zig-ts-indent-offset)
+     ((parent-is "struct_declaration") parent-bol zig-ts-indent-offset)
+     ((parent-is "enum_declaration") parent-bol zig-ts-indent-offset)
+     ((parent-is "union_declaration") parent-bol zig-ts-indent-offset)
+     ((parent-is "switch_expression") parent-bol zig-ts-indent-offset)
      ((match "else" "if_expression") parent-bol 0)
-     ((parent-is "if_expression") parent-bol zig-ts-mode-indent-offset)
-     ((parent-is "while_expression") parent-bol zig-ts-mode-indent-offset)
-     ((parent-is "for_expression") parent-bol zig-ts-mode-indent-offset)
-     ((parent-is "initializer_list") parent-bol zig-ts-mode-indent-offset)
-     ((parent-is "arguments") parent-bol zig-ts-mode-indent-offset)
+     ((parent-is "if_expression") parent-bol zig-ts-indent-offset)
+     ((parent-is "while_expression") parent-bol zig-ts-indent-offset)
+     ((parent-is "for_expression") parent-bol zig-ts-indent-offset)
+     ((parent-is "initializer_list") parent-bol zig-ts-indent-offset)
+     ((parent-is "arguments") parent-bol zig-ts-indent-offset)
      ((match nil "assignment_expression") parent-bol 0)
-     ((node-is "multiline_string") parent-bol zig-ts-mode-indent-offset)))
+     ((node-is "multiline_string") parent-bol zig-ts-indent-offset)))
   "Tree-sitter indent rules for `zig-ts-mode'.")
 
-(defun zig-ts-mode--imenu-fn-pred-fn (node)
+;;;; Find the definition at point (some Emacs commands use this internally)
+
+(defvar zig-ts--defun-type-regexp
+  (regexp-opt '("declaration"))
+  "Regex matching tree-sitter node types treated as defun-like.
+Used as the value of `treesit-defun-type-regexp'.")
+
+(defun zig-ts--imenu-fn-pred-fn (node)
   "Test whether the given function NODE is validated.
 See `treesit-simple-imenu-settings'."
   (if (equal (treesit-node-type node) "function_declaration")
@@ -328,24 +325,24 @@ See `treesit-simple-imenu-settings'."
        (treesit-node-text
         (treesit-node-child-by-field-name node "variable_type_function"))))))
 
-(defun zig-ts-mode--imenu-func-name-fn (node)
+(defun zig-ts--imenu-func-name-fn (node)
   "Return appropriate name for the given function NODE.
 See `treesit-simple-imenu-settings'."
   (treesit-node-text (treesit-node-child-by-field-name node "name")))
 
-(defun zig-ts-mode--imenu-assign-style-declaration-name-fn (node)
+(defun zig-ts--imenu-assign-style-declaration-name-fn (node)
   "Return appropriate name for the given enum NODE.
 See `treesit-simple-imenu-settings'."
   (let ((parent-node (treesit-node-parent node)))
     (when (equal (treesit-node-type parent-node) "variable_declaration")
       (treesit-node-text (treesit-node-child parent-node 0 t)))))
 
-(defun zig-ts-mode--imenu-test-name-fn (node)
+(defun zig-ts--imenu-test-name-fn (node)
   "Return appropriate name for the given test NODE.
 See `treesit-simple-imenu-settings'."
   (treesit-node-text (treesit-node-child node 0 t)))
 
-(defun zig-ts-mode--imenu-type-pred-fn (node)
+(defun zig-ts--imenu-type-pred-fn (node)
   "Test whether the given type NODE is validated.
 See `treesit-simple-imenu-settings'."
   ;; assume TitleCase is a type
@@ -355,13 +352,13 @@ See `treesit-simple-imenu-settings'."
      (treesit-node-text
       (treesit-node-child-by-field-name node "variable_type_function")))))
 
-(defun zig-ts-mode--imenu-type-name-fn (node)
+(defun zig-ts--imenu-type-name-fn (node)
   "Return appropriate name for the given type NODE.
 See `treesit-simple-imenu-settings'."
   (treesit-node-text
    (treesit-node-child-by-field-name node "variable_type_function")))
 
-(defun zig-ts-mode--imenu-constant-pred-fn (node)
+(defun zig-ts--imenu-constant-pred-fn (node)
   "Test whether the given constant NODE is validated.
 See `treesit-simple-imenu-settings'."
   ;; assume TitleCase is a type
@@ -376,16 +373,47 @@ See `treesit-simple-imenu-settings'."
       (treesit-node-text
        (treesit-node-child-by-field-name node "variable_type_function"))))))
 
-(defun zig-ts-mode--imenu-constant-name-fn (node)
+(defun zig-ts--imenu-constant-name-fn (node)
   "Return appropriate name for the given constant NODE.
 See `treesit-simple-imenu-settings'."
   (treesit-node-text
    (treesit-node-child-by-field-name node "variable_type_function")))
 
-(defun zig-ts-mode--defun-name (node)
+(defun zig-ts--defun-name (node)
+  "Return the defun name of NODE.
+Return nil if there is no name or if NODE is not a defun node."
   (pcase (treesit-node-type node)
-    ("function_declaration" (zig-ts-mode--imenu-func-name-fn node))
-    (_ (zig-ts-mode--imenu-assign-style-declaration-name-fn node))))
+    ("function_declaration" (zig-ts--imenu-func-name-fn node))
+    (_ (zig-ts--imenu-assign-style-declaration-name-fn node))))
+
+;;;; Imenu integration
+
+(defvar zig-ts--imenu-settings
+  `(("Fn" "\\`function_declaration\\'" nil zig-ts--imenu-func-name-fn)
+    ("Enum" "\\`enum_declaration\\'"
+     nil zig-ts--imenu-assign-style-declaration-name-fn)
+    ("Struct" "\\`struct_declaration\\'"
+     nil zig-ts--imenu-assign-style-declaration-name-fn)
+    ("Opaque" "\\`opaque_declaration\\'"
+     nil zig-ts--imenu-assign-style-declaration-name-fn)
+    ("ErrorSet" "\\`error_set_declaration\\'"
+     nil zig-ts--imenu-assign-style-declaration-name-fn)
+    ("Union" "\\`union_declaration\\'"
+     nil zig-ts--imenu-assign-style-declaration-name-fn)
+    ("Test" "\\`test_declaration\\'" nil zig-ts--imenu-test-name-fn))
+  "Settings for `treesit-simple-imenu' in `zig-ts-mode'.")
+
+;;;; Structured navigation
+
+(defvar zig-ts--thing-settings
+  `((zig
+     (defun ,(regexp-opt '("function_declaration")))
+     (sentence ,(regexp-opt '("variable_declaration"
+                              "defer_statement"
+                              "expression_statement")))
+     (text ,(regexp-opt '("comment" "string" "multiline_string")))
+     (comment "comment")))
+  "Settings for `treesit-thing-settings' in `zig-ts-mode'.")
 
 ;;;; Fill paragraph
 
@@ -425,6 +453,46 @@ SOFT works the same as in `comment-indent-new-line'."
       (funcall insert-line-break)
       (delete-region (line-beginning-position) (point))
       (insert (make-string offset ?\s) "//" whitespaces))))
+
+;;;; Pre-check
+
+;; TODO: add markdown-inline support
+(defconst zig-ts-grammar-recipes
+  '((zig . ("https://github.com/tree-sitter-grammars/tree-sitter-zig")))
+  "Tree-sitter grammar recipes for Zig.
+Each entry is a list of (LANG . (URL REVISION SOURCE-DIR)).  Suitable
+for use as the value of `treesit-language-source-alist'.")
+
+(defun zig-ts-install-grammars ()
+  "Install required language grammars if not already available."
+  (interactive)
+  (dolist (recipe zig-ts-grammar-recipes)
+    (let ((grammar (car recipe)))
+      (unless (treesit-language-available-p grammar)
+        (message "Installing %s tree-sitter grammar..." grammar)
+        ;; Make `treesit-install-language-grammar' pick up the grammar
+        ;; recipes without modifying user's configuration
+        (let ((treesit-language-source-alist zig-ts-grammar-recipes))
+          (treesit-install-language-grammar grammar))))))
+
+(defvar zig-ts--grammar-compatibility-checked nil
+  "Non-nil if grammar compatibility has already been checked this session.")
+
+(defun zig-ts--check-grammar-compatibility ()
+  "Check whether installed grammars are compatible with current `zig-ts-mode'.
+Emit a warning if an outdated grammar is detected."
+  (unless zig-ts--grammar-compatibility-checked
+    (setq zig-ts--grammar-compatibility-checked t)
+    (when (treesit-language-available-p 'zig)
+      (condition-case nil
+          ;; old tree-sitter use ValDecl
+          (treesit-query-compile 'zig '((variable_declaration)) t)
+        (error
+         (display-warning
+          'zig
+          (format "The installed `%s' grammar does not appear to be from \
+tree-sitter-grammars.  Run M-x zig-ts-install-grammars to update."
+                  'zig)))))))
 
 ;;;; CLI commands
 ;;
@@ -484,58 +552,66 @@ If given a SOURCE, execute the CMD on it."
 (define-derived-mode zig-ts-mode prog-mode "Zig"
   "Major mode for editing Zig, powered by tree-sitter."
   :group 'zig-ts
-  :syntax-table zig-ts-mode--syntax-table
+  :syntax-table zig-ts--syntax-table
 
-  (unless (treesit-ready-p 'zig)
-    (user-error "Tree-sitter for Zig isn't available"))
+  (when-let* ((missing (seq-filter (lambda (r)
+                                     (not (treesit-language-available-p (car r))))
+                                   zig-ts-grammar-recipes)))
+    (when (y-or-n-p "Zig tree-sitter grammars are not installed yet.  Install now?")
+      (zig-ts-install-grammars)))
 
-  (treesit-parser-create 'zig)
+  ;; Warn if installed grammars are outdated
+  (zig-ts--check-grammar-compatibility)
 
   ;; Compile
   (setq-local compile-command "zig build")
 
-  ;; Comments
-  (zig-ts-mode-comment-setup)
+  ;; Comment
+  (setq-local comment-start "// ")
+  (setq-local comment-end "")
+  (setq-local comment-start-skip (rx (group (seq "/" (+ "/")))
+                                     (* (syntax whitespace))))
+  (setq-local comment-end-skip (rx (* (syntax whitespace))
+                                   (group (syntax comment-end))))
+  (setq-local comment-multi-line t)
+  (setq-local comment-line-break-function #'zig-ts--comment-indent-new-line)
 
-  ;; Font-lock
-  (setq-local treesit-font-lock-settings zig-ts-mode--font-lock-settings)
-  (setq-local treesit-font-lock-feature-list zig-ts-mode--font-lock-feature-list)
-
-  ;; Indentation
+  ;; Electric indentation on delimiters
   (setq-local electric-indent-chars
               (append "{}()[].,;" electric-indent-chars))
-  (setq-local treesit-simple-indent-rules zig-ts-mode--indent-rules)
 
-  (setq-local
-   treesit-simple-imenu-settings
-   `(("Fn" "\\`function_declaration\\'" nil zig-ts-mode--imenu-func-name-fn)
-     ("Enum" "\\`enum_declaration\\'"
-      nil zig-ts-mode--imenu-assign-style-declaration-name-fn)
-     ("Struct" "\\`struct_declaration\\'"
-      nil zig-ts-mode--imenu-assign-style-declaration-name-fn)
-     ("Opaque" "\\`opaque_declaration\\'"
-      nil zig-ts-mode--imenu-assign-style-declaration-name-fn)
-     ("ErrorSet" "\\`error_set_declaration\\'"
-      nil zig-ts-mode--imenu-assign-style-declaration-name-fn)
-     ("Union" "\\`union_declaration\\'"
-      nil zig-ts-mode--imenu-assign-style-declaration-name-fn)
-     ("Test" "\\`test_declaration\\'" nil zig-ts-mode--imenu-test-name-fn)))
+  ;; Fill paragraph
+  (setq-local paragraph-start
+              (rx (or (seq (* (syntax whitespace))
+                           (group (* (seq "/" (+ "/"))))
+                           (* (syntax whitespace))
+                           eol)
+                      "\f")))
+  (setq-local paragraph-separate paragraph-start)
+  (setq-local adaptive-fill-mode t)
 
-  (setq-local treesit-defun-type-regexp
-              (regexp-opt '("declaration")))
+  (when (treesit-ready-p 'zig)
+    (treesit-parser-create 'zig)
 
-  ;; Navigation
-  (setq-local treesit-defun-name-function #'zig-ts-mode--defun-name)
-  (setq-local treesit-thing-settings
-              `((zig
-                 (defun ,(regexp-opt '("function_declaration")))
-                 (sentence ,(regexp-opt '("variable_declaration"
-                                          "defer_statement"
-                                          "expression_statement")))
-                 (text ,(regexp-opt '("comment" "string" "multiline_string")))
-                 (comment "comment"))))
+    ;; Fill paragraph with tree-sitter feature
+    (setq-local fill-paragraph-function #'zig-ts--fill-paragraph)
 
-  (treesit-major-mode-setup))
+    ;; Font-lock
+    (setq-local treesit-font-lock-settings zig-ts--font-lock-settings)
+    (setq-local treesit-font-lock-feature-list zig-ts--font-lock-feature-list)
+
+    ;; Indentation
+    (setq-local treesit-simple-indent-rules zig-ts--indent-rules)
+
+    ;; Navigation
+    (setq-local treesit-simple-imenu-settings zig-ts--imenu-settings)
+    (setq-local treesit-thing-settings zig-ts--thing-settings)
+
+    ;; Defun
+    (setq-local treesit-defun-name-function #'zig-ts--defun-name)
+    (setq-local treesit-defun-type-regexp zig-ts--defun-type-regexp)
+
+    (treesit-major-mode-setup)))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.\\(zig\\|zon\\)\\'" . zig-ts-mode))
