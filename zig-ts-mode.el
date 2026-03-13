@@ -456,16 +456,38 @@ SOFT works the same as in `comment-indent-new-line'."
                              (if soft
                                  (insert-and-inherit ?\n)
                                (newline 1)))))
-    (save-excursion
-      (beginning-of-line)
-      (re-search-forward (rx "//" (group (opt "!") (* " ")))
-                         (line-end-position)
-                         t))
-    (let ((offset (- (match-beginning 0) (line-beginning-position)))
-          (whitespaces (match-string 1)))
-      (funcall insert-line-break)
-      (delete-region (line-beginning-position) (point))
-      (insert (make-string offset ?\s) "//" whitespaces))))
+    (cond
+     ;; Line starts with //, or ///, or ////..., or //!
+     ((save-excursion
+        (beginning-of-line)
+        (re-search-forward (rx "//" (group (* (any "/!")) (* " ")))
+                           (line-end-position) t nil))
+      (let ((offset (- (match-beginning 0) (line-beginning-position)))
+            (whitespaces (match-string 1)))
+        (funcall insert-line-break)
+        (delete-region (line-beginning-position) (point))
+        (insert (make-string offset ?\s) "//" whitespaces)))
+
+     ;; Line starts with multiline string
+     ((save-excursion
+        (beginning-of-line)
+        (re-search-forward (rx "\\\\" (group (* " ")))
+                           (line-end-position) t nil))
+      (let ((offset (- (match-beginning 0) (line-beginning-position)))
+            (whitespaces (match-string 1)))
+        (funcall insert-line-break)
+        (delete-region (line-beginning-position) (point))
+        (insert (make-string offset ?\s) "\\\\" whitespaces)))
+
+     ;; Line starts with whitespaces or no space.  This is basically
+     ;; the default case since (rx (* " ")) matches anything
+     ((save-excursion
+        (beginning-of-line)
+        (looking-at (rx (* " "))))
+      (let ((whitespaces (match-string 0)))
+        (funcall insert-line-break)
+        (delete-region (line-beginning-position) (point))
+        (insert whitespaces))))))
 
 ;;;; Pre-check
 
@@ -586,7 +608,6 @@ If given a SOURCE, execute the CMD on it."
                                      (* (syntax whitespace))))
   (setq-local comment-end-skip (rx (* (syntax whitespace))
                                    (group (syntax comment-end))))
-  (setq-local comment-multi-line t)
   (setq-local comment-line-break-function #'zig-ts--comment-indent-new-line)
 
   ;; Electric indentation on delimiters
