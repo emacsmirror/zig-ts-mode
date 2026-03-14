@@ -498,12 +498,16 @@ SOFT works the same as in `comment-indent-new-line'."
 Each entry is a list of (LANG . (URL REVISION SOURCE-DIR)).  Suitable
 for use as the value of `treesit-language-source-alist'.")
 
-(defun zig-ts-install-grammars ()
-  "Install required language grammars if not already available."
-  (interactive)
+(defun zig-ts-install-grammars (&optional force)
+  "Install required language grammars if not already available.
+
+With prefix argument FORCE, reinstall grammars even if they are already
+installed.  This is useful after upgrading zig-ts-mode to a version that
+requires a newer grammar."
+  (interactive "P")
   (dolist (recipe zig-ts-grammar-recipes)
     (let ((grammar (car recipe)))
-      (unless (treesit-language-available-p grammar)
+      (when (or force (not (treesit-language-available-p grammar)))
         (message "Installing %s tree-sitter grammar..." grammar)
         ;; Make `treesit-install-language-grammar' pick up the grammar
         ;; recipes without modifying user's configuration
@@ -526,7 +530,7 @@ Emit a warning if an outdated grammar is detected."
          (display-warning
           'zig
           (format "The installed `%s' grammar does not appear to be from \
-tree-sitter-grammars.  Run M-x zig-ts-install-grammars to update."
+tree-sitter-grammars.  Run C-u M-x zig-ts-install-grammars to reinstall."
                   'zig)))))))
 
 ;;;; CLI commands
