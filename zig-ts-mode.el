@@ -156,7 +156,9 @@
    :language 'zig
    :feature 'builtin
    '(([(builtin_identifier) "c" "..."]) @font-lock-builtin-face
-     (calling_convention "(" _ @font-lock-builtin-face ")"))
+     (calling_convention "(" _ @font-lock-builtin-face ")")
+     (((identifier) @font-lock-builtin-face)
+      (:equal "_" @font-lock-builtin-face)))
 
    :language 'zig
    :feature 'comment
@@ -182,8 +184,12 @@
                                 (enum_declaration)
                                 (union_declaration)
                                 (opaque_declaration)])
-     (variable_declaration "const" (identifier) @font-lock-constant-face)
-     (variable_declaration :anchor (identifier) @font-lock-variable-name-face))
+     (variable_declaration [("var" (identifier) @font-lock-variable-name-face)
+                            ("const" (identifier) @font-lock-constant-face)]
+                           "=" (identifier) @font-lock-variable-use-face)
+     (variable_declaration
+      :anchor [("const" (identifier) @font-lock-constant-face)
+               ("var" (identifier) @font-lock-variable-name-face)]))
 
    :language 'zig
    :feature 'assignment
@@ -229,18 +235,9 @@
      (([(builtin_type) "anyframe"]) @font-lock-type-face))
 
    :language 'zig
-   :feature 'constant
-   '(([(boolean) "null" "unreachable" "undefined"]) @font-lock-constant-face)
-
-   :language 'zig
    :feature 'label
    '((block_label (identifier) @font-lock-constant-face)
      (break_label (identifier) @font-lock-constant-face))
-
-   :language 'zig
-   :feature 'builtin
-   '((((identifier) @font-lock-builtin-face)
-      (:equal "_" @font-lock-builtin-face)))
 
    :language 'zig
    :feature 'property
@@ -253,7 +250,8 @@
    ;; Must be under type, otherwise can be highlighted as constants
    :language 'zig
    :feature 'constant
-   '(((identifier) @font-lock-constant-face
+   '(([(boolean) "null" "unreachable" "undefined"]) @font-lock-constant-face
+     ((identifier) @font-lock-constant-face
       (:match "^[A-Z][A-Z_0-9]+$" @font-lock-constant-face)))
 
    :language 'zig
@@ -502,7 +500,7 @@ for use as the value of `treesit-language-source-alist'.")
   "Install required language grammars if not already available.
 
 With prefix argument FORCE, reinstall grammars even if they are already
-installed.  This is useful after upgrading zig-ts-mode to a version that
+installed.  This is useful after upgrading `zig-ts-mode' to a version that
 requires a newer grammar."
   (interactive "P")
   (dolist (recipe zig-ts-grammar-recipes)
