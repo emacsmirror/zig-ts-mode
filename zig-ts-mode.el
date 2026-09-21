@@ -7,7 +7,7 @@
 ;; Keywords: zig languages tree-sitter
 
 ;; Package-Version: 0.3.0
-;; Package-Requires: ((emacs "29.1"))
+;; Package-Requires: ((emacs "30.1"))
 
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -163,7 +163,7 @@
    :language 'zig
    :feature 'comment
    '((((comment) @font-lock-doc-face)
-      (:match "^//!" @font-lock-doc-face))
+      (:match "^//\\(?:!\\|/\\(?:[^/]\\|$\\)\\)" @font-lock-doc-face))
      (comment) @font-lock-comment-face)
 
    :language 'zig
@@ -307,11 +307,13 @@
      ((parent-is "struct_declaration") parent-bol zig-ts-indent-offset)
      ((parent-is "enum_declaration") parent-bol zig-ts-indent-offset)
      ((parent-is "union_declaration") parent-bol zig-ts-indent-offset)
+     ((parent-is "opaque_declaration") parent-bol zig-ts-indent-offset)
      ((parent-is "container_field") parent-bol zig-ts-indent-offset)
      ((parent-is "initializer_list") parent-bol zig-ts-indent-offset)
 
      ((parent-is "block") parent-bol zig-ts-indent-offset)
      ((parent-is "arguments") parent-bol zig-ts-indent-offset)
+     ((parent-is "parameters") parent-bol zig-ts-indent-offset)
 
      (no-node parent-bol 0)))
   "`treesit-simple-indent-rules' for `zig-ts-mode'.")
@@ -322,19 +324,6 @@
   (regexp-opt '("declaration"))
   "Regex matching tree-sitter node types treated as defun-like.
 Used as the value of `treesit-defun-type-regexp'.")
-
-(defun zig-ts--imenu-fn-pred-fn (node)
-  "Test whether the given function NODE is validated.
-See `treesit-simple-imenu-settings'."
-  (if (equal (treesit-node-type node) "function_declaration")
-      t
-    ;; VarDecl
-    ;; assume camelCase is a function
-    (let ((case-fold-search nil))
-      (string-match-p
-       "^[a-z]+\\([A-Z][a-z0-9]*\\)+$"
-       (treesit-node-text
-        (treesit-node-child-by-field-name node "variable_type_function"))))))
 
 (defun zig-ts--imenu-func-name-fn (node)
   "Return appropriate name for the given function NODE.
@@ -351,44 +340,10 @@ See `treesit-simple-imenu-settings'."
 (defun zig-ts--imenu-test-name-fn (node)
   "Return appropriate name for the given test NODE.
 See `treesit-simple-imenu-settings'."
-  (treesit-node-text (treesit-node-child node 0 t)))
-
-(defun zig-ts--imenu-type-pred-fn (node)
-  "Test whether the given type NODE is validated.
-See `treesit-simple-imenu-settings'."
-  ;; assume TitleCase is a type
-  (let ((case-fold-search nil))
-    (string-match-p
-     "^[A-Z]\\([a-z]+[A-Za-z_0-9]*\\)*$"
-     (treesit-node-text
-      (treesit-node-child-by-field-name node "variable_type_function")))))
-
-(defun zig-ts--imenu-type-name-fn (node)
-  "Return appropriate name for the given type NODE.
-See `treesit-simple-imenu-settings'."
-  (treesit-node-text
-   (treesit-node-child-by-field-name node "variable_type_function")))
-
-(defun zig-ts--imenu-constant-pred-fn (node)
-  "Test whether the given constant NODE is validated.
-See `treesit-simple-imenu-settings'."
-  ;; assume TitleCase is a type
-  (let ((case-fold-search nil))
-    (and
-     (equal
-      (treesit-node-text (treesit-node-child node 0))
-      "const")
-     ;; assume CAPS_1 is a constant
-     (string-match-p
-      "^[A-Z][A-Z_0-9]+$"
-      (treesit-node-text
-       (treesit-node-child-by-field-name node "variable_type_function"))))))
-
-(defun zig-ts--imenu-constant-name-fn (node)
-  "Return appropriate name for the given constant NODE.
-See `treesit-simple-imenu-settings'."
-  (treesit-node-text
-   (treesit-node-child-by-field-name node "variable_type_function")))
+  (let ((child (treesit-node-child node 0 t)))
+    (if (equal (treesit-node-type child) "string")
+        (treesit-node-text child)
+      (format "test at line %d" (line-number-at-pos (treesit-node-start node))))))
 
 (defun zig-ts--defun-name (node)
   "Return the defun name of NODE.
@@ -428,6 +383,21 @@ Return nil if there is no name or if NODE is not a defun node."
 
 ;;;; Fill paragraph
 
+(defun zig-ts--syntax-propertize (beg end)
+  "Mark Zig multiline string lines between BEG and END as strings."
+  (goto-char beg)
+  (while (search-forward "\\\\" end t)
+    (let ((start (- (point) 2)))
+      (when (equal (treesit-node-type (treesit-node-at start))
+                   "multiline_string")
+        (let ((eol (line-end-position)))
+          ;; Quotes and backslashes inside a multiline string are literal.
+          (put-text-property start eol 'syntax-table (string-to-syntax "."))
+          (put-text-property start (1+ start) 'syntax-table (string-to-syntax "|"))
+          (when (< eol (point-max))
+            (put-text-property eol (1+ eol) 'syntax-table (string-to-syntax "|"))))
+        (goto-char (line-end-position))))))
+
 (defun zig-ts--fill-paragraph (&optional _justify)
   "Fill the Zig paragraph at point.
 Use tree-sitter to detect multiline-string and doc-comment.  Return t if
@@ -438,7 +408,7 @@ the default handler run."
          (doc-comment-p (and (string= type "comment")
                              (save-excursion
                                (goto-char (treesit-node-start node))
-                               (looking-at "//!"))))
+                               (looking-at "//\\(?:!\\|/\\(?:[^/]\\|$\\)\\)"))))
          (multiline-string-p (string= type "multiline_string")))
     (when (or doc-comment-p multiline-string-p)
       ;; Return t so `fill-paragraph' doesn't attempt to fill by itself
@@ -449,43 +419,27 @@ the default handler run."
 (defun zig-ts--comment-indent-new-line (&optional soft)
   "Break line at point and indent, continuing comment if within one.
 SOFT works the same as in `comment-indent-new-line'."
-  (let ((insert-line-break (lambda ()
-                             (delete-horizontal-space)
-                             (if soft
-                                 (insert-and-inherit ?\n)
-                               (newline 1)))))
-    (cond
-     ;; Line starts with //, or ///, or ////..., or //!
-     ((save-excursion
-        (beginning-of-line)
-        (re-search-forward (rx "//" (group (* (any "/!")) (* " ")))
-                           (line-end-position) t nil))
-      (let ((offset (- (match-beginning 0) (line-beginning-position)))
-            (whitespaces (match-string 1)))
-        (funcall insert-line-break)
-        (delete-region (line-beginning-position) (point))
-        (insert (make-string offset ?\s) "//" whitespaces)))
-
-     ;; Line starts with multiline string
-     ((save-excursion
-        (beginning-of-line)
-        (re-search-forward (rx "\\\\" (group (* " ")))
-                           (line-end-position) t nil))
-      (let ((offset (- (match-beginning 0) (line-beginning-position)))
-            (whitespaces (match-string 1)))
-        (funcall insert-line-break)
-        (delete-region (line-beginning-position) (point))
-        (insert (make-string offset ?\s) "\\\\" whitespaces)))
-
-     ;; Line starts with whitespaces or no space.  This is basically
-     ;; the default case since (rx (* " ")) matches anything
-     ((save-excursion
-        (beginning-of-line)
-        (looking-at (rx (* " "))))
-      (let ((whitespaces (match-string 0)))
-        (funcall insert-line-break)
-        (delete-region (line-beginning-position) (point))
-        (insert whitespaces))))))
+  (let* ((pos (point))
+         (state (syntax-ppss))
+         (prefix
+          (save-excursion
+            (cond
+             ((nth 4 state)
+              (goto-char (nth 8 state))
+              (when (looking-at (rx "//" (* (any "/!")) (* blank)))
+                (cons (current-column) (match-string-no-properties 0))))
+             ((and (nth 3 state)
+                   (equal (treesit-node-type
+                           (treesit-node-at (max (point-min) (1- pos))))
+                          "multiline_string"))
+              (goto-char (nth 8 state))
+              (when (looking-at (rx "\\\\" (* blank)))
+                (cons (current-column) (match-string-no-properties 0))))))))
+    (delete-horizontal-space)
+    (if soft (insert-and-inherit ?\n) (newline 1))
+    (if prefix
+        (progn (indent-to (car prefix)) (insert (cdr prefix)))
+      (indent-according-to-mode))))
 
 ;;;; Pre-check
 
@@ -535,6 +489,12 @@ tree-sitter-grammars.  Run C-u M-x zig-ts-install-grammars to reinstall."
 ;;
 ;; copied from zig-mode
 
+(defun zig-ts--buffer-file-name ()
+  "Return the local part of the visited file name, or signal a user error."
+  (unless buffer-file-name
+    (user-error "This buffer is not visiting a file"))
+  (file-local-name buffer-file-name))
+
 (defun zig-ts--run-cmd (cmd &optional source &rest args)
   "Use compile command to execute a zig CMD with ARGS if given.
 If given a SOURCE, execute the CMD on it."
@@ -552,27 +512,27 @@ If given a SOURCE, execute the CMD on it."
 (defun zig-ts-build-exe ()
   "Create executable from source or object file."
   (interactive)
-  (zig-ts--run-cmd "build-exe" (file-local-name (buffer-file-name))))
+  (zig-ts--run-cmd "build-exe" (zig-ts--buffer-file-name)))
 
 (defun zig-ts-build-lib ()
   "Create library from source or assembly."
   (interactive)
-  (zig-ts--run-cmd "build-lib" (file-local-name (buffer-file-name))))
+  (zig-ts--run-cmd "build-lib" (zig-ts--buffer-file-name)))
 
 (defun zig-ts-build-obj ()
   "Create object from source or assembly."
   (interactive)
-  (zig-ts--run-cmd "build-obj" (file-local-name (buffer-file-name))))
+  (zig-ts--run-cmd "build-obj" (zig-ts--buffer-file-name)))
 
 (defun zig-ts-test ()
   "Test buffer using `zig test`."
   (interactive)
-  (zig-ts--run-cmd "test" (file-local-name (buffer-file-name)) "-O" zig-ts-test-optimization-mode))
+  (zig-ts--run-cmd "test" (zig-ts--buffer-file-name) "-O" zig-ts-test-optimization-mode))
 
 (defun zig-ts-run ()
   "Create an executable from the current buffer and run it immediately."
   (interactive)
-  (zig-ts--run-cmd "run" (file-local-name (buffer-file-name)) "-O" zig-ts-run-optimization-mode))
+  (zig-ts--run-cmd "run" (zig-ts--buffer-file-name) "-O" zig-ts-run-optimization-mode))
 
 ;;;; Major mode definitions
 
@@ -591,6 +551,8 @@ If given a SOURCE, execute the CMD on it."
   :group 'zig-ts
   :syntax-table zig-ts--syntax-table
 
+  (setq-local indent-tabs-mode nil)
+
   (when-let* ((missing (seq-filter (lambda (r)
                                      (not (treesit-language-available-p (car r))))
                                    zig-ts-grammar-recipes)))
@@ -601,7 +563,7 @@ If given a SOURCE, execute the CMD on it."
   (zig-ts--check-grammar-compatibility)
 
   ;; Compile
-  (setq-local compile-command "zig build")
+  (setq-local compile-command (concat (shell-quote-argument zig-ts-zig-bin) " build"))
 
   ;; Comment
   (setq-local comment-start "// ")
@@ -628,6 +590,10 @@ If given a SOURCE, execute the CMD on it."
 
   (when (treesit-ready-p 'zig)
     (treesit-parser-create 'zig)
+
+    (setq-local syntax-propertize-function #'zig-ts--syntax-propertize)
+    (add-hook 'syntax-propertize-extend-region-functions
+              #'syntax-propertize-wholelines nil t)
 
     ;; Fill paragraph with tree-sitter feature
     (setq-local fill-paragraph-function #'zig-ts--fill-paragraph)

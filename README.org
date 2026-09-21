@@ -6,6 +6,7 @@
   - [[#straight][Straight]]
 - [[#configuration][Configuration]]
   - [[#register-zig-ts-mode-with-eglot][Register zig-ts-mode with eglot]]
+- [[#development][Development]]
 
 * Zig Tree Sitter Mode
 
@@ -15,7 +16,11 @@ Target zig tree sitter grammar: [[https://github.com/tree-sitter-grammars/tree-s
 tree-sitter grammar is not installed, run ~M-x
 zig-ts-install-grammars~ to install.
 
-Tested on Emacs 30 and master branch.
+Requires Emacs 30.1 or later with tree-sitter support.  The navigation
+settings use ~treesit-thing-settings~, introduced in Emacs 30.
+The installed grammar must also match the ABI range supported by Emacs's
+tree-sitter library; see ~treesit-library-abi-version~.  The current
+upstream Zig grammar uses ABI 15.
 
 -----
 
@@ -55,3 +60,16 @@ over this project, please contact me. Thank you!
   (add-to-list 'eglot-server-programs
                '(zig-ts-mode . ("zls"))))
 #+end_src
+
+* Development
+
+Run ~just lint~ for byte-compilation checks and ~just test~ for ERT
+regression tests.  Tests require the Zig grammar described above and
+never install it automatically.  To use a grammar in a separate directory:
+
+#+begin_src sh
+ZIG_TS_GRAMMAR_DIR=/path/to/grammars just test
+#+end_src
+
+Set ~EMACS~ to select the Emacs executable.  ~just eval~ opens the Zig
+examples for interactive inspection.
